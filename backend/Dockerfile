@@ -13,7 +13,7 @@ RUN pip install -r ${REQUIREMENTS_FILE}
 COPY . .
 RUN DJANGO_SECRET_KEY=build-only python manage.py collectstatic --noinput \
     && chmod +x entrypoint.sh \
-    && useradd --system --no-create-home app \
+    && useradd --system --create-home app \
     && chown -R app /app
 
 USER app
