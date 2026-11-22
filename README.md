@@ -14,7 +14,7 @@ El proyecto avanza por fases.
 
 - [x] Fase 0: croquis del monorepo, Docker, documentación y tooling
 - [x] Fase 1: modelos del dominio y admin de Django
-- [ ] Fase 2: seeds
+- [x] Fase 2: seeds
 - [ ] Fase 3: autenticación de la API
 - [ ] Fase 4: API de visitas
 - [ ] Fase 5: fundamentos del frontend (login y rutas)
@@ -82,7 +82,7 @@ docker compose up --build
 | API            | http://localhost:3000/api/ (o http://localhost:8000/api/) |
 | Admin Django   | http://localhost:3000/admin/                           |
 
-Al iniciar, el contenedor del backend aplica las migraciones. Los datos iniciales se cargan automáticamente cuando esté disponible la Fase 2 (variable `SEED_ON_START`).
+Al iniciar, el contenedor del backend aplica las migraciones y carga los [datos iniciales](#datos-iniciales-seeds) (controlado por `SEED_ON_START`), de modo que la aplicación arranca con colegios, docentes, especialistas y visitas de ejemplo.
 
 Comandos útiles:
 
@@ -110,6 +110,7 @@ source .venv/bin/activate          # Windows PowerShell: .venv\Scripts\Activate.
 pip install -r requirements/dev.txt
 cp .env.example .env               # Windows PowerShell: Copy-Item .env.example .env
 python manage.py migrate
+python manage.py seed_data         # datos iniciales (ver "Datos iniciales")
 python manage.py runserver
 ```
 
@@ -138,7 +139,7 @@ El frontend queda en http://localhost:5173. Vite hace proxy de `/api`, `/admin` 
 | `DJANGO_SECRET_KEY`           | Clave secreta de Django                       | clave insegura de demostración              |
 | `DJANGO_ALLOWED_HOSTS`        | Hosts permitidos, separados por coma          | `localhost,127.0.0.1,backend`               |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | Orígenes confiables para CSRF                 | `http://localhost:3000,http://localhost:8000` |
-| `DJANGO_TIME_ZONE`            | Zona horaria (define qué fecha es "hoy")      | `UTC`                                       |
+| `DJANGO_TIME_ZONE`            | Zona horaria (define qué fecha es "hoy")      | `America/Caracas`                           |
 | `SEED_ON_START`               | Cargar datos iniciales al iniciar el backend  | `true`                                      |
 | `BACKEND_PORT`                | Puerto publicado del backend                  | `8000`                                      |
 | `FRONTEND_PORT`               | Puerto publicado del frontend                 | `3000`                                      |
@@ -151,7 +152,7 @@ El frontend queda en http://localhost:5173. Vite hace proxy de `/api`, `/admin` 
 | `DJANGO_SECRET_KEY`           | Obligatoria si `DJANGO_DEBUG` es `False`             |
 | `DJANGO_ALLOWED_HOSTS`        | Hosts permitidos                                     |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | Orígenes confiables para CSRF                        |
-| `DJANGO_TIME_ZONE`            | Zona horaria (por defecto `UTC`), por ejemplo `America/Caracas` |
+| `DJANGO_TIME_ZONE`            | Zona horaria (por defecto `America/Caracas`)         |
 | `DATABASE_URL`                | `sqlite:///db.sqlite3` o una URL de PostgreSQL       |
 
 **Frontend local** (`frontend/.env`, opcional, ver [frontend/.env.example](frontend/.env.example)): `VITE_API_PROXY_TARGET` indica a qué backend hace proxy el servidor de desarrollo.
@@ -160,7 +161,7 @@ El frontend queda en http://localhost:5173. Vite hace proxy de `/api`, `/admin` 
 
 El admin está en `/admin/` (http://localhost:3000/admin/ con Docker, http://localhost:8000/admin/ en local) y permite gestionar colegios, docentes, especialistas y visitas.
 
-Hasta que existan los seeds (Fase 2), crea un superusuario:
+Inicia sesión con el usuario administrador de los [datos iniciales](#datos-iniciales-seeds) (`admin` / `admin12345`) o crea el tuyo:
 
 ```bash
 python manage.py createsuperuser                              # local (desde backend/)
@@ -173,16 +174,46 @@ En el admin, las visitas eliminadas siguen apareciendo (filtro «Deleted at»), 
 
 ## Datos iniciales (seeds)
 
-> Disponible a partir de la Fase 2.
-
-Se cargarán mediante un comando de gestión idempotente (se puede ejecutar varias veces sin duplicar datos):
+La aplicación necesita datos para mostrar algo útil desde el primer arranque. Se cargan con un comando de gestión **idempotente**: se puede ejecutar cuantas veces se quiera y nunca duplica ni pisa datos existentes.
 
 ```bash
-python manage.py seed_data                          # local
+python manage.py seed_data                               # local (desde backend/)
 docker compose exec backend python manage.py seed_data   # Docker
 ```
 
-Incluirá colegios, docentes, especialistas con usuario listos para iniciar sesión, un superusuario para el admin de Django y 2-3 visitas de ejemplo. Los usuarios y contraseñas de demostración se documentarán aquí.
+- **Con Docker** se ejecuta solo al iniciar el contenedor del backend. Para desactivarlo, define `SEED_ON_START=false`.
+- **En local** hay que ejecutarlo a mano después de `migrate`.
+
+**Qué carga:**
+
+| Dato           | Cantidad | Detalle                                                                                       |
+| -------------- | -------- | --------------------------------------------------------------------------------------------- |
+| Colegios       | 4        | Colegio San Rafael, Unidad Educativa Las Palmas, Colegio Santa Lucía, Unidad Educativa Monte Sinaí |
+| Docentes       | 12       | 3 por colegio                                                                                 |
+| Especialistas  | 3        | Con usuario para iniciar sesión                                                               |
+| Administrador  | 1        | Usuario del admin de Django                                                                   |
+| Visitas        | 3        | Una por especialista: 2 visitas en aula y 1 encuentro, de hace 2, 9 y 20 días                 |
+
+Todos los datos son ficticios. Las fechas de las visitas se calculan respecto al día del primer arranque, así que nunca caen en el futuro.
+
+**Usuarios de demostración** (solo para desarrollo; no uses estas credenciales fuera de un entorno local):
+
+| Rol           | Usuario          | Contraseña   | Especialidad   |
+| ------------- | ---------------- | ------------ | -------------- |
+| Especialista  | `maria.gonzalez` | `demo1234`   | Matemáticas    |
+| Especialista  | `carlos.pena`    | `demo1234`   | Lectoescritura |
+| Especialista  | `lucia.mendoza`  | `demo1234`   | Ciencias       |
+| Administrador | `admin`          | `admin12345` | -              |
+
+**Cómo se comporta al repetirse:**
+
+- Si un registro ya existe, se deja tal cual (por ejemplo, no se restablece una contraseña que hayas cambiado).
+- Si eliminas una visita de ejemplo, no se vuelve a crear.
+- Todo ocurre en una transacción: si algo falla, no queda nada a medias.
+
+Para volver al estado inicial por completo en Docker: `docker compose down -v` y luego `docker compose up --build`.
+
+El código está en un módulo `seeds.py` por app (`directory`, `accounts` y `visits`) y el comando que los orquesta está en `backend/apps/visits/management/commands/seed_data.py`.
 
 ## Modelo de datos
 

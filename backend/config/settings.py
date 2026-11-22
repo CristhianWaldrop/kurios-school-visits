@@ -77,7 +77,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = env("DJANGO_TIME_ZONE", default="UTC")
+TIME_ZONE = env("DJANGO_TIME_ZONE", default="America/Caracas")
 USE_I18N = True
 USE_TZ = True
 
