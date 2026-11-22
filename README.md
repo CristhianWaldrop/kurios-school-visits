@@ -13,7 +13,7 @@ Prueba técnica de Kurios Education (Desarrollador Fullstack).
 El proyecto avanza por fases.
 
 - [x] Fase 0: croquis del monorepo, Docker, documentación y tooling
-- [ ] Fase 1: modelos del dominio
+- [x] Fase 1: modelos del dominio y admin de Django
 - [ ] Fase 2: seeds
 - [ ] Fase 3: autenticación de la API
 - [ ] Fase 4: API de visitas
@@ -28,6 +28,7 @@ Las secciones de este documento que describen funcionalidad futura lo indican ex
 - [Estructura del repositorio](#estructura-del-repositorio)
 - [Cómo ejecutar el proyecto](#cómo-ejecutar-el-proyecto)
 - [Variables de entorno](#variables-de-entorno)
+- [Admin de Django](#admin-de-django)
 - [Datos iniciales (seeds)](#datos-iniciales-seeds)
 - [Modelo de datos](#modelo-de-datos)
 - [Arquitectura](#arquitectura)
@@ -137,6 +138,7 @@ El frontend queda en http://localhost:5173. Vite hace proxy de `/api`, `/admin` 
 | `DJANGO_SECRET_KEY`           | Clave secreta de Django                       | clave insegura de demostración              |
 | `DJANGO_ALLOWED_HOSTS`        | Hosts permitidos, separados por coma          | `localhost,127.0.0.1,backend`               |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | Orígenes confiables para CSRF                 | `http://localhost:3000,http://localhost:8000` |
+| `DJANGO_TIME_ZONE`            | Zona horaria (define qué fecha es "hoy")      | `UTC`                                       |
 | `SEED_ON_START`               | Cargar datos iniciales al iniciar el backend  | `true`                                      |
 | `BACKEND_PORT`                | Puerto publicado del backend                  | `8000`                                      |
 | `FRONTEND_PORT`               | Puerto publicado del frontend                 | `3000`                                      |
@@ -149,9 +151,25 @@ El frontend queda en http://localhost:5173. Vite hace proxy de `/api`, `/admin` 
 | `DJANGO_SECRET_KEY`           | Obligatoria si `DJANGO_DEBUG` es `False`             |
 | `DJANGO_ALLOWED_HOSTS`        | Hosts permitidos                                     |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | Orígenes confiables para CSRF                        |
+| `DJANGO_TIME_ZONE`            | Zona horaria (por defecto `UTC`), por ejemplo `America/Caracas` |
 | `DATABASE_URL`                | `sqlite:///db.sqlite3` o una URL de PostgreSQL       |
 
 **Frontend local** (`frontend/.env`, opcional, ver [frontend/.env.example](frontend/.env.example)): `VITE_API_PROXY_TARGET` indica a qué backend hace proxy el servidor de desarrollo.
+
+## Admin de Django
+
+El admin está en `/admin/` (http://localhost:3000/admin/ con Docker, http://localhost:8000/admin/ en local) y permite gestionar colegios, docentes, especialistas y visitas.
+
+Hasta que existan los seeds (Fase 2), crea un superusuario:
+
+```bash
+python manage.py createsuperuser                              # local (desde backend/)
+docker compose exec backend python manage.py createsuperuser  # Docker
+```
+
+Para crear un especialista: crea primero el usuario en **Users** y después un registro en **Specialists** que lo enlace.
+
+En el admin, las visitas eliminadas siguen apareciendo (filtro «Deleted at»), y eliminar una visita desde allí también es lógico: se rellena `deleted_at` y la fila se conserva. Para restaurarla, vacía `deleted_at`.
 
 ## Datos iniciales (seeds)
 
@@ -168,7 +186,7 @@ Incluirá colegios, docentes, especialistas con usuario listos para iniciar sesi
 
 ## Modelo de datos
 
-Diseño objetivo, que se implementa en la Fase 1. Los nombres de tablas y columnas están en inglés; Django prefija cada tabla con el nombre de su app (por ejemplo `directory_school`).
+Los nombres de tablas y columnas están en inglés; Django prefija cada tabla con el nombre de su app (por ejemplo `directory_school`).
 
 ```mermaid
 erDiagram
@@ -226,10 +244,13 @@ erDiagram
 
 Reglas:
 
-- Un docente pertenece a un colegio y una visita referencia a ese colegio y a uno de sus docentes (el backend valida la coherencia).
-- `visit_type` solo admite `classroom_visit` (visita en aula) y `meeting` (encuentro).
-- `visit_date` no puede ser futura.
-- La eliminación es lógica: se rellena `deleted_at` y la visita deja de listarse, pero la fila se conserva.
+- Un docente pertenece a un colegio y una visita referencia a ese colegio y a uno de sus docentes. La base de datos no puede expresar esa coherencia, así que la valida `Visit.clean()`.
+- `visit_type` solo admite `classroom_visit` (visita en aula) y `meeting` (encuentro). Lo garantiza una restricción `CHECK` en la base de datos.
+- `observations` no puede estar vacío (restricción `CHECK`).
+- `visit_date` no puede ser futura. Se valida en `Visit.clean()` comparando con la fecha de hoy en la zona horaria `DJANGO_TIME_ZONE`.
+- Un docente no puede repetirse (mismo nombre y apellido) dentro de un colegio, y el nombre del colegio es único.
+- Los colegios, docentes y especialistas con visitas asociadas no se pueden borrar (`PROTECT`).
+- La eliminación de visitas es lógica: se rellena `deleted_at` y la fila se conserva. `Visit.objects` (manager por defecto, también usado en las relaciones como `school.visits`) excluye las eliminadas; `Visit.all_objects` las incluye.
 - `USER` es el modelo de autenticación de Django; `SPECIALIST` es el perfil de dominio asociado a cada usuario especialista.
 
 ## Arquitectura

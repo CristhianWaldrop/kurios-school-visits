@@ -22,6 +22,7 @@ services:
       DJANGO_DEBUG: "False"
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,backend}
       DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-http://localhost:3000,http://localhost:8000}
+      DJANGO_TIME_ZONE: ${DJANGO_TIME_ZONE:-UTC}
       SEED_ON_START: ${SEED_ON_START:-true}
     depends_on:
       db:
