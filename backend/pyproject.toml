@@ -1,0 +1,19 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["migrations"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "DJ", "C4", "SIM", "RUF"]
+ignore = ["RUF012"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["test_*.py"]
+addopts = "-ra --strict-markers"
+filterwarnings = ["ignore:No directory at:UserWarning"]
+env = [
+    "D:DATABASE_URL=sqlite:///:memory:",
+    "D:DJANGO_DEBUG=False",
+    "D:DJANGO_SECRET_KEY=test-secret-key",
+]
