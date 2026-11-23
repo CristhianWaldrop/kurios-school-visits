@@ -97,6 +97,14 @@ describe('getFieldErrors', () => {
     expect(getFieldErrors(error)).toEqual({ form: 'Ingresa un valor válido.' })
   })
 
+  it('explains an inverted date range under "form"', () => {
+    const error = validationError({ __all__: [{ code: 'invalid_range', message: 'x' }] })
+
+    expect(getFieldErrors(error)).toEqual({
+      form: 'La fecha «Desde» no puede ser posterior a «Hasta».',
+    })
+  })
+
   it('uses a generic message for codes it does not know', () => {
     const error = validationError({ observations: [{ code: 'max_length', message: 'x' }] })
 

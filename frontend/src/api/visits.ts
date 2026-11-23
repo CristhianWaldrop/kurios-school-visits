@@ -40,6 +40,9 @@ export interface VisitListParams {
   pageSize?: number
   schoolId?: number
   visitType?: VisitType
+  dateFrom?: string
+  dateTo?: string
+  search?: string
 }
 
 function toVisit(wire: VisitWire): Visit {
@@ -77,6 +80,9 @@ function toQueryString(params: VisitListParams): string {
   if (params.pageSize !== undefined) query.set('page_size', String(params.pageSize))
   if (params.schoolId !== undefined) query.set('school', String(params.schoolId))
   if (params.visitType !== undefined) query.set('visit_type', params.visitType)
+  if (params.dateFrom !== undefined) query.set('date_from', params.dateFrom)
+  if (params.dateTo !== undefined) query.set('date_to', params.dateTo)
+  if (params.search !== undefined) query.set('search', params.search)
   const serialized = query.toString()
   return serialized ? `?${serialized}` : ''
 }

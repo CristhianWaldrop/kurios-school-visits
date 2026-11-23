@@ -7,6 +7,11 @@
   gap: $space-4;
 
   > * {
-    min-width: 14rem;
+    min-width: 11rem;
   }
+}
+
+.search {
+  flex: 1 1 100%;
+  max-width: 30rem;
 }

@@ -19,7 +19,11 @@ El proyecto avanza por fases.
 - [x] Fase 4: API de visitas
 - [x] Fase 5: fundamentos del frontend (login, rutas protegidas e inicio)
 - [x] Fase 6: pantallas de visitas
-- [ ] Fase 7: cierre y revisión final
+- [ ] Fase 7: funcionalidades adicionales
+  - [x] Filtro por rango de fechas y búsqueda
+  - [ ] Roles: administrador y especialista
+  - [ ] Documentación OpenAPI interactiva
+- [ ] Fase 8: cierre y revisión final
 
 Las secciones de este documento que describen funcionalidad futura lo indican expresamente.
 
@@ -33,6 +37,7 @@ Las secciones de este documento que describen funcionalidad futura lo indican ex
 - [Modelo de datos](#modelo-de-datos)
 - [Arquitectura](#arquitectura)
 - [API](#api)
+- [Funcionalidades adicionales](#funcionalidades-adicionales)
 - [Tests y calidad de código](#tests-y-calidad-de-código)
 - [Decisiones técnicas](#decisiones-técnicas)
 - [Qué quedó fuera y mejoras futuras](#qué-quedó-fuera-y-mejoras-futuras)
@@ -321,7 +326,7 @@ Todos los endpoints exigen una sesión de **especialista** salvo los marcados co
 | POST   | `/api/auth/logout/` | Sesión   | Cierra la sesión (204)                               |
 | GET    | `/api/schools/`     | Sesión   | Colegios (sin paginar, ordenados por nombre)         |
 | GET    | `/api/teachers/`    | Sesión   | Docentes (sin paginar); filtro `?school=<id>`        |
-| GET    | `/api/visits/`      | Sesión   | Visitas, paginadas; filtros `?school=<id>&visit_type=<tipo>` |
+| GET    | `/api/visits/`      | Sesión   | Visitas, paginadas; filtros por colegio, tipo, fechas y texto (ver [Visitas](#visitas)) |
 | POST   | `/api/visits/`      | Sesión   | Registra una visita (201)                            |
 | GET    | `/api/visits/{id}/` | Sesión   | Detalle de una visita                                |
 | PATCH / PUT | `/api/visits/{id}/` | Autor | Edita una visita (parcial / completa)             |
@@ -398,7 +403,17 @@ curl -b cookies.txt http://localhost:3000/api/auth/me/
 }
 ```
 
-Los filtros se pueden combinar: `GET /api/visits/?school=1&visit_type=meeting`. Un valor inexistente responde `400`.
+**Filtros** (todos opcionales y combinables, p. ej. `GET /api/visits/?school=1&visit_type=meeting&date_from=2026-11-01&search=ana`):
+
+| Parámetro      | Descripción                                                                                       |
+| -------------- | ------------------------------------------------------------------------------------------------- |
+| `school`       | Identificador del colegio                                                                         |
+| `visit_type`   | `classroom_visit` o `meeting`                                                                     |
+| `date_from`    | Visitas de esa fecha en adelante (`AAAA-MM-DD`, inclusive)                                        |
+| `date_to`      | Visitas hasta esa fecha (`AAAA-MM-DD`, inclusive)                                                 |
+| `search`       | Texto buscado en las observaciones, el nombre del docente y el nombre del colegio (ver abajo)     |
+
+Un valor inválido responde `400` con el código del error: `invalid_choice` (colegio o tipo inexistente), `invalid` (fecha mal escrita) o `invalid_range` (`date_from` posterior a `date_to`, bajo la clave `__all__`).
 
 **Alta y edición** (`POST`, `PUT`, `PATCH`). La respuesta usa el mismo formato que el listado. El cuerpo se envía con identificadores (`school_id`, `teacher_id`), mientras que la lectura devuelve los objetos anidados:
 
@@ -464,7 +479,7 @@ Toda la interfaz está en español. Se llama siempre a rutas relativas (`/api/..
 
 **Visitas**
 
-- **Listado.** Tabla paginada (10 por página) con filtros por colegio y por tipo de visita. Los filtros y la página viven en la dirección (`/visits?school=1&type=meeting&page=2`), así que se pueden compartir, funcionan con el botón «Atrás» y sobreviven a recargar la página. Cambiar un filtro vuelve a la primera página. Distingue entre no tener visitas y no tener visitas que coincidan con los filtros, y cada fila entera es clicable.
+- **Listado.** Tabla paginada (10 por página) con búsqueda de texto y filtros por colegio, tipo de visita y rango de fechas (ver [Funcionalidades adicionales](#funcionalidades-adicionales)). Los filtros y la página viven en la dirección (`/visits?school=1&type=meeting&from=2026-11-01&q=ana&page=2`), así que se pueden compartir, funcionan con el botón «Atrás» y sobreviven a recargar la página. Cambiar un filtro vuelve a la primera página. Distingue entre no tener visitas y no tener visitas que coincidan con los filtros, y cada fila entera es clicable.
 - **Registro y edición.** Un único formulario para ambos casos. El docente depende del colegio elegido (solo se ofrecen los de ese colegio y se vacía al cambiar de colegio), y la fecha no admite días futuros. Valida primero en el navegador, con mensajes en español, y después muestra bajo cada campo los errores que devuelva el servidor. Si el envío falla se conserva lo escrito.
 - **Detalle.** Muestra todos los datos, con las observaciones respetando los saltos de línea. Solo el especialista que registró la visita ve los botones «Editar» y «Eliminar»; el resto ve un aviso. Quien intente abrir la edición de una visita ajena por la dirección ve un mensaje y no el formulario, y el servidor lo rechaza igualmente.
 - **Eliminación.** Pide confirmación en la misma página y es lógica: la visita deja de mostrarse en la aplicación, pero la fila se conserva (ver [Modelo de datos](#modelo-de-datos)). Si falla, la visita se mantiene y se explica el error.
@@ -484,6 +499,20 @@ Toda la interfaz está en español. Se llama siempre a rutas relativas (`/api/..
 **Tablas de visitas.** Cada fila es clicable en su totalidad y lleva al detalle. Por accesibilidad, cada fila contiene un único enlace real (la fecha) que se extiende con CSS sobre toda la fila, de modo que también funciona con teclado y lectores de pantalla.
 
 **Diseño.** Herramienta de gestión sobria: neutros fríos, un único color de acento, tablas para los datos y sin elementos decorativos. Las reglas están en `CLAUDE.md` y todos los colores, espacios y radios son variables en `src/styles/_variables.scss`. Se adapta a pantallas estrechas.
+
+## Funcionalidades adicionales
+
+Además de lo que pide el enunciado, se añadieron estas funcionalidades.
+
+### Búsqueda y filtro por rango de fechas
+
+En el listado de visitas, junto a los filtros por colegio y tipo:
+
+- **Buscar.** Un cuadro de texto que busca en las **observaciones**, el **nombre del docente** y el **nombre del colegio**. No distingue mayúsculas de minúsculas y acepta palabras sueltas o partes de palabra. Si se escriben varias palabras, todas deben aparecer en alguno de esos tres sitios (en cualquier orden), así que «ana rojas» encuentra al docente Ana Rojas y «rafael fracciones» encuentra las visitas del colegio San Rafael que mencionan fracciones. La búsqueda se lanza sola cuando se deja de escribir (unos 0,4 segundos), no en cada tecla.
+- **Desde y Hasta.** Rango de fechas de la visita, con ambos extremos incluidos. Se puede indicar solo uno. El selector de fecha impide elegir un rango invertido y, si se fuerza desde la dirección, el servidor lo rechaza y la pantalla lo explica en español.
+- **Todo combinable y en la dirección.** La búsqueda y las fechas se suman a los demás filtros y se guardan en la URL (`/visits?q=ana&from=2026-11-01&to=2026-11-30`), de modo que se pueden compartir y sobreviven a recargar. «Limpiar filtros» los quita todos a la vez.
+
+**Limitación conocida.** La búsqueda no distingue mayúsculas, pero **sí distingue tildes**: «planificación» no encuentra «planificacion» y viceversa. Resolverlo bien requiere activar la extensión `unaccent` de PostgreSQL, que no se justifica para este alcance. Además, la base SQLite de la ejecución local solo ignora mayúsculas en letras sin tilde (con PostgreSQL, que es el que usa Docker, también las ignora en letras con tilde).
 
 ## Tests y calidad de código
 
@@ -528,7 +557,6 @@ Se completará al cierre del proyecto. Candidatas, ordenadas por valor:
 - Permisos finos por especialista.
 - Límite de intentos de inicio de sesión.
 - Cookies `Secure` y cabeceras HTTPS para un despliegue con TLS (hoy se sirve por HTTP en `localhost`).
-- Filtro por rango de fechas y búsqueda en observaciones.
 - Pruebas end to end.
 
 ## Uso de inteligencia artificial
@@ -558,6 +586,7 @@ Esta sección se actualiza con cada fase del desarrollo.
 - **Documentación:** el README y `CLAUDE.md`.
 - **Frontend, fundamentos:** capa de API con tipos, traducción de errores a español, sesión y guardia de rutas, pantalla de login, layout, página de inicio, componentes compartidos, estilos y tests.
 - **Frontend, pantallas de visitas:** listado con filtros y paginación, formulario de alta y edición, detalle, eliminación con confirmación, hooks de datos, componentes de formulario y tests.
+- **Búsqueda y filtro por fechas:** filtros del backend con validación, campos nuevos en el listado, pausa al escribir, filtros en la URL, mensajes en español y tests en ambos lados.
 
 **Qué tuve que corregir de lo que generó:**
 
@@ -575,6 +604,7 @@ Esta sección se actualiza con cada fase del desarrollo.
 - Un test del login comprobaba el orden de las peticiones con `indexOf`, que devuelve `-1` si la petición no existe; al romper el código a propósito no detectaba el fallo, así que se añadió la comprobación de que la petición existe.
 - Se nombraron `visitForm.ts` y `VisitForm.tsx` (y lo mismo con los filtros) en la misma carpeta; en Windows y macOS, donde las mayúsculas no distinguen, chocaban y TypeScript lo detectó. Se renombraron los módulos de lógica.
 - Un test del formulario comprobaba que el docente se vaciaba al cambiar de colegio mirando el texto del select, que no cambia aunque el valor interno siga siendo el del colegio anterior; al romper el código a propósito no lo detectaba, y la visita se habría podido enviar con un docente de otro colegio. Se reescribió para comprobar que no se puede enviar sin elegir un docente nuevo.
+- Dos tests de la búsqueda fallaron por un error mío en el propio test (el prefijo `GET` duplicado en una constante), no por la aplicación; se corrigieron.
 - Tras confirmar un cambio, el aviso «Cambios guardados.» seguía visible junto a la pregunta de eliminar la visita; se oculta mientras se pide la confirmación.
 - Al revisar a mano la aplicación vi que los avisos de confirmación (registrar, editar y eliminar) no se cerraban nunca; ahora tienen un botón para cerrarlos y se cierran solos a los 20 segundos, y al cerrarse se limpian del historial del navegador para que no reaparezcan al recargar.
 - En la primera revisión visual en móvil, la cabecera se apretaba (el nombre de la aplicación y «Cerrar sesión» se partían en varias líneas); se reorganizó con un punto de quiebre.

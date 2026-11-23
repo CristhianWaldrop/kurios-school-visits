@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router-dom'
 
-import { describeError } from '../../api/errors'
+import { describeError, getFieldErrors } from '../../api/errors'
 import type { VisitType } from '../../api/types'
 import { Alert } from '../../components/Alert'
 import { Button } from '../../components/Button'
@@ -9,6 +9,7 @@ import { Loading } from '../../components/Loading'
 import { Notice } from '../../components/Notice'
 import { PageHeader } from '../../components/PageHeader'
 import { Pagination } from '../../components/Pagination'
+import { useDebouncedValue } from '../../lib/useDebouncedValue'
 import { useNotice } from '../../lib/useNotice'
 import { useSchools } from '../directory/useSchools'
 import {
@@ -23,6 +24,7 @@ import { VisitsTable } from './VisitsTable'
 import styles from './VisitsListPage.module.scss'
 
 const PAGE_SIZE = 10
+const SEARCH_PAUSE_MS = 400
 
 function describeTotal(count: number): string {
   return count === 1 ? '1 visita' : `${count} visitas`
@@ -34,15 +36,24 @@ export function VisitsListPage() {
   const { message: notice, dismiss: dismissNotice } = useNotice()
 
   const schools = useSchools()
+  const debouncedSearch = useDebouncedValue(filters.search ?? '', SEARCH_PAUSE_MS)
+  const searchTerm = filters.search ? debouncedSearch.trim() || undefined : undefined
   const { data, isPending, isError, error, isPlaceholderData, refetch } = useVisits({
     page: filters.page,
     pageSize: PAGE_SIZE,
     schoolId: filters.schoolId,
     visitType: filters.visitType,
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+    search: searchTerm,
   })
 
-  function updateFilters(next: VisitFiltersValue) {
-    setSearchParams(serializeVisitFilters(next))
+  function updateFilters(next: VisitFiltersValue, replace = false) {
+    setSearchParams(serializeVisitFilters(next), { replace })
+  }
+
+  function changeSearch(search: string) {
+    updateFilters({ ...filters, search: search || undefined, page: 1 }, true)
   }
 
   function changeSchool(schoolId: number | undefined) {
@@ -51,6 +62,14 @@ export function VisitsListPage() {
 
   function changeVisitType(visitType: VisitType | undefined) {
     updateFilters({ ...filters, visitType, page: 1 })
+  }
+
+  function changeDateFrom(dateFrom: string | undefined) {
+    updateFilters({ ...filters, dateFrom, page: 1 })
+  }
+
+  function changeDateTo(dateTo: string | undefined) {
+    updateFilters({ ...filters, dateTo, page: 1 })
   }
 
   function clearFilters() {
@@ -73,8 +92,11 @@ export function VisitsListPage() {
       <VisitFilters
         schools={schools.data ?? []}
         value={filters}
+        onSearchChange={changeSearch}
         onSchoolChange={changeSchool}
         onVisitTypeChange={changeVisitType}
+        onDateFromChange={changeDateFrom}
+        onDateToChange={changeDateTo}
         onClear={clearFilters}
       />
 
@@ -83,7 +105,7 @@ export function VisitsListPage() {
 
         {isError && (
           <>
-            <Alert>{describeError(error)}</Alert>
+            <Alert>{Object.values(getFieldErrors(error))[0] ?? describeError(error)}</Alert>
             <div>
               {filters.page > 1 ? (
                 <Button variant="secondary" onClick={() => updateFilters({ ...filters, page: 1 })}>

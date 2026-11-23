@@ -8,6 +8,7 @@ const FIELD_NAMES: Record<string, string> = {
   visit_date: 'visitDate',
   visit_type: 'visitType',
   non_field_errors: 'form',
+  __all__: 'form',
 }
 
 const VALIDATION_MESSAGES: Record<string, string> = {
@@ -19,6 +20,7 @@ const VALIDATION_MESSAGES: Record<string, string> = {
   does_not_exist: 'La opción seleccionada ya no existe.',
   incorrect_type: 'Ingresa un valor válido.',
   future_date: 'La fecha de la visita no puede ser futura.',
+  invalid_range: 'La fecha «Desde» no puede ser posterior a «Hasta».',
   teacher_not_in_school: 'El docente no pertenece al colegio seleccionado.',
 }
 

@@ -46,9 +46,28 @@ describe('visits api', () => {
     it('translates every filter and pagination option', async () => {
       const { calls } = mockApi({ 'GET *': { body: pageWire([]) } })
 
-      await listVisits({ page: 2, pageSize: 5, schoolId: 3, visitType: 'meeting' })
+      await listVisits({
+        page: 2,
+        pageSize: 5,
+        schoolId: 3,
+        visitType: 'meeting',
+        dateFrom: '2026-11-01',
+        dateTo: '2026-11-30',
+        search: 'ana rojas',
+      })
 
-      expect(calls[0]?.path).toBe('/api/visits/?page=2&page_size=5&school=3&visit_type=meeting')
+      expect(calls[0]?.path).toBe(
+        '/api/visits/?page=2&page_size=5&school=3&visit_type=meeting' +
+          '&date_from=2026-11-01&date_to=2026-11-30&search=ana+rojas',
+      )
+    })
+
+    it('encodes special characters in the search', async () => {
+      const { calls } = mockApi({ 'GET *': { body: pageWire([]) } })
+
+      await listVisits({ search: 'Núñez & 100%' })
+
+      expect(calls[0]?.path).toBe('/api/visits/?search=N%C3%BA%C3%B1ez+%26+100%25')
     })
 
     it('flags a previous page', async () => {
