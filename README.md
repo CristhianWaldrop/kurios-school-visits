@@ -15,7 +15,7 @@ El proyecto avanza por fases.
 - [x] Fase 0: croquis del monorepo, Docker, documentación y tooling
 - [x] Fase 1: modelos del dominio y admin de Django
 - [x] Fase 2: seeds
-- [ ] Fase 3: autenticación de la API
+- [x] Fase 3: autenticación de la API
 - [ ] Fase 4: API de visitas
 - [ ] Fase 5: fundamentos del frontend (login y rutas)
 - [ ] Fase 6: pantallas de visitas
@@ -309,13 +309,58 @@ flowchart LR
 
 ## API
 
-Disponible hoy:
+Todos los endpoints exigen una sesión de **especialista** salvo los marcados como públicos. Un usuario sin perfil de especialista (por ejemplo `admin`) no puede iniciar sesión en la API.
 
-| Método | Ruta           | Descripción                  |
-| ------ | -------------- | ---------------------------- |
-| GET    | `/api/health/` | Estado del servicio (público) |
+| Método | Ruta                | Acceso   | Descripción                                          |
+| ------ | ------------------- | -------- | ---------------------------------------------------- |
+| GET    | `/api/health/`      | Público  | Estado del servicio                                  |
+| GET    | `/api/auth/csrf/`   | Público  | Fija la cookie `csrftoken` (204)                     |
+| POST   | `/api/auth/login/`  | Público  | Inicia sesión con `username` y `password`            |
+| POST   | `/api/auth/logout/` | Sesión   | Cierra la sesión (204)                               |
+| GET    | `/api/auth/me/`     | Sesión   | Especialista autenticado                             |
 
-El resto de endpoints (autenticación, colegios, docentes y visitas) se documentará aquí al implementarse. La API exigirá sesión en todos los endpoints salvo los explícitamente públicos.
+Los endpoints de colegios, docentes y visitas se documentarán aquí al implementarse (Fase 4).
+
+### Autenticación
+
+La API usa la **sesión de Django** (cookie `sessionid`, `HttpOnly`) con protección **CSRF**. El flujo es:
+
+1. `GET /api/auth/csrf/` deja la cookie `csrftoken`.
+2. `POST /api/auth/login/` con la cabecera `X-CSRFToken` (el valor de esa cookie) y el cuerpo `{"username": "...", "password": "..."}`. Si es correcto responde `200` con el especialista y crea la sesión.
+3. Las siguientes peticiones envían las cookies solas; las que modifican datos (`POST`, `PUT`, `PATCH`, `DELETE`) deben incluir `X-CSRFToken`. Tras el login el token cambia: hay que leer siempre el valor actual de la cookie.
+4. `POST /api/auth/logout/` cierra la sesión.
+
+Respuesta de `login` y `me`:
+
+```json
+{
+  "id": 1,
+  "username": "maria.gonzalez",
+  "first_name": "María",
+  "last_name": "González",
+  "full_name": "María González",
+  "email": "maria.gonzalez@example.com",
+  "specialty": "Matemáticas"
+}
+```
+
+Códigos de estado:
+
+| Código | Cuándo                                                                               |
+| ------ | ------------------------------------------------------------------------------------ |
+| 400    | Faltan `username` o `password`                                                       |
+| 401    | Sin sesión, o credenciales inválidas (mismo mensaje para usuario inexistente, contraseña errónea, usuario inactivo o sin perfil de especialista) |
+| 403    | Sesión válida de un usuario que no es especialista, o token CSRF ausente o inválido (`{"code": "csrf_failed"}`) |
+
+Ejemplo con `curl` (usa `curl.exe` en PowerShell):
+
+```bash
+curl -c cookies.txt http://localhost:3000/api/auth/csrf/
+TOKEN=$(grep csrftoken cookies.txt | awk '{print $7}')
+curl -b cookies.txt -c cookies.txt -H "X-CSRFToken: $TOKEN" -H "Content-Type: application/json" \
+  -d '{"username": "maria.gonzalez", "password": "demo1234"}' http://localhost:3000/api/auth/login/
+curl -b cookies.txt http://localhost:3000/api/auth/me/
+```
 
 ## Tests y calidad de código
 
@@ -358,6 +403,8 @@ Se completará al cierre del proyecto. Candidatas, ordenadas por valor:
 - Documentación OpenAPI interactiva.
 - Integración continua (tests y linters en cada push).
 - Permisos finos por especialista.
+- Límite de intentos de inicio de sesión.
+- Cookies `Secure` y cabeceras HTTPS para un despliegue con TLS (hoy se sirve por HTTP en `localhost`).
 - Filtro por rango de fechas y búsqueda en observaciones.
 - Pruebas end to end.
 
