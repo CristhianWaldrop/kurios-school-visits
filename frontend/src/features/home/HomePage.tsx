@@ -5,6 +5,7 @@ import { Alert } from '../../components/Alert'
 import { Button } from '../../components/Button'
 import { ButtonLink } from '../../components/ButtonLink'
 import { Loading } from '../../components/Loading'
+import { PageHeader } from '../../components/PageHeader'
 import { useAuth } from '../auth/useAuth'
 import { useLatestVisits } from '../visits/useLatestVisits'
 import { VisitsTable } from '../visits/VisitsTable'
@@ -16,18 +17,18 @@ export function HomePage() {
 
   return (
     <>
-      <div className={styles.header}>
-        <div>
-          <h1>Hola, {user?.firstName || user?.username}</h1>
-          <p>Registra tus visitas a colegios y consulta las más recientes.</p>
-        </div>
-        <div className={styles.actions}>
-          <ButtonLink to="/visits/new">Registrar visita</ButtonLink>
-          <ButtonLink to="/visits" variant="secondary">
-            Ver visitas
-          </ButtonLink>
-        </div>
-      </div>
+      <PageHeader
+        title={`Hola, ${user?.firstName || user?.username}`}
+        description="Registra tus visitas a colegios y consulta las más recientes."
+        actions={
+          <>
+            <ButtonLink to="/visits/new">Registrar visita</ButtonLink>
+            <ButtonLink to="/visits" variant="secondary">
+              Ver visitas
+            </ButtonLink>
+          </>
+        }
+      />
 
       <section className={styles.section} aria-labelledby="latest-visits-title">
         <div className={styles.sectionHeader}>

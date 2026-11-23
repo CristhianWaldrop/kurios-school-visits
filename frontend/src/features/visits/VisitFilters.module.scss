@@ -1,0 +1,12 @@
+@use '../../styles/variables' as *;
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: $space-4;
+
+  > * {
+    min-width: 14rem;
+  }
+}

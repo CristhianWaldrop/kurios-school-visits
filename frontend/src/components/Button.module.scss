@@ -45,6 +45,16 @@
   }
 }
 
+.danger {
+  background: $color-danger;
+  color: $color-on-accent;
+
+  &:hover:not(:disabled) {
+    background: $color-danger-hover;
+    color: $color-on-accent;
+  }
+}
+
 .ghost {
   padding-inline: $space-2;
   background: transparent;

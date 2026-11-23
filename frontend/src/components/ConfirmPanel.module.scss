@@ -1,0 +1,22 @@
+@use '../styles/variables' as *;
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  margin-bottom: $space-6;
+  padding: $space-4 $space-5;
+  border: 1px solid $color-danger-border;
+  border-radius: $radius;
+  background: $color-surface;
+
+  p {
+    color: $color-muted;
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-3;
+}

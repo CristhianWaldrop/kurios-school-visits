@@ -1,0 +1,17 @@
+@use '../styles/variables' as *;
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-3;
+  font-size: $font-size-sm;
+  color: $color-muted;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+}

@@ -1,6 +1,6 @@
-import { useId, type InputHTMLAttributes } from 'react'
+import type { InputHTMLAttributes } from 'react'
 
-import styles from './TextField.module.scss'
+import { Field } from './Field'
 
 interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string
@@ -8,27 +8,9 @@ interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export function TextField({ label, error, id, ...props }: TextFieldProps) {
-  const generatedId = useId()
-  const inputId = id ?? generatedId
-  const errorId = `${inputId}-error`
-
   return (
-    <div className={styles.field}>
-      <label htmlFor={inputId} className={styles.label}>
-        {label}
-      </label>
-      <input
-        id={inputId}
-        className={styles.input}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? errorId : undefined}
-        {...props}
-      />
-      {error && (
-        <p id={errorId} className={styles.error}>
-          {error}
-        </p>
-      )}
-    </div>
+    <Field label={label} error={error} id={id}>
+      {(controlProps) => <input {...controlProps} {...props} />}
+    </Field>
   )
 }

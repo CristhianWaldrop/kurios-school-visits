@@ -11,7 +11,7 @@
   font-weight: 500;
 }
 
-.input {
+.control {
   width: 100%;
   padding: $space-2 $space-3;
   border: 1px solid $color-border-strong;
@@ -19,13 +19,24 @@
   background: $color-surface;
   transition: border-color $transition;
 
-  &:hover {
+  &:hover:not(:disabled) {
     border-color: $color-muted;
+  }
+
+  &:disabled {
+    background: $color-bg;
+    color: $color-muted;
+    cursor: not-allowed;
   }
 
   &[aria-invalid='true'] {
     border-color: $color-danger;
   }
+}
+
+textarea.control {
+  min-height: 8rem;
+  resize: vertical;
 }
 
 .error {

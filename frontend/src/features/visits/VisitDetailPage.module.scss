@@ -1,0 +1,53 @@
+@use '../../styles/variables' as *;
+
+.details {
+  display: grid;
+  grid-template-columns: 11rem 1fr;
+  margin: 0 0 $space-6;
+  border: 1px solid $color-border;
+  border-radius: $radius;
+  background: $color-surface;
+
+  dt,
+  dd {
+    margin: 0;
+    padding: $space-3 $space-4;
+  }
+
+  dt {
+    color: $color-muted;
+    font-size: $font-size-sm;
+  }
+
+  dt:not(:first-of-type),
+  dt:not(:first-of-type) + dd {
+    border-top: 1px solid $color-border;
+  }
+
+  @media (max-width: $breakpoint-sm) {
+    grid-template-columns: 1fr;
+
+    dt {
+      padding-bottom: 0;
+    }
+
+    dt:not(:first-of-type),
+    dt:not(:first-of-type) + dd {
+      border-top: none;
+    }
+
+    dt:not(:first-of-type) {
+      border-top: 1px solid $color-border;
+    }
+  }
+}
+
+.observations {
+  white-space: pre-wrap;
+}
+
+.hint {
+  margin-bottom: $space-4;
+  color: $color-muted;
+  font-size: $font-size-sm;
+}

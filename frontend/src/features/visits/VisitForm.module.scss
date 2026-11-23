@@ -1,0 +1,35 @@
+@use '../../styles/variables' as *;
+
+.form {
+  display: flex;
+  max-width: 640px;
+  flex-direction: column;
+  gap: $space-5;
+  padding: $space-6;
+  border: 1px solid $color-border;
+  border-radius: $radius;
+  background: $color-surface;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $space-4;
+
+  @media (max-width: $breakpoint-sm) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-3;
+}
+
+.retry {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $space-2;
+}

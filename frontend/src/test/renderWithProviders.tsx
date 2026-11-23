@@ -8,14 +8,16 @@ import { AuthProvider } from '../features/auth/AuthProvider'
 
 interface RenderOptions {
   route?: string
+  state?: unknown
 }
 
-export function renderWithProviders(ui: ReactElement, { route = '/' }: RenderOptions = {}) {
+export function renderWithProviders(ui: ReactElement, { route = '/', state }: RenderOptions = {}) {
   const queryClient = createQueryClient({ retry: false })
+  const [pathname = '/', search = ''] = route.split('?')
 
   const result = render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[route]}>
+      <MemoryRouter initialEntries={[{ pathname, search: search ? `?${search}` : '', state }]}>
         <AuthProvider>{ui}</AuthProvider>
       </MemoryRouter>
     </QueryClientProvider>,

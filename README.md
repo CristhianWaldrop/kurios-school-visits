@@ -18,7 +18,7 @@ El proyecto avanza por fases.
 - [x] Fase 3: autenticación de la API
 - [x] Fase 4: API de visitas
 - [x] Fase 5: fundamentos del frontend (login, rutas protegidas e inicio)
-- [ ] Fase 6: pantallas de visitas
+- [x] Fase 6: pantallas de visitas
 - [ ] Fase 7: cierre y revisión final
 
 Las secciones de este documento que describen funcionalidad futura lo indican expresamente.
@@ -456,9 +456,19 @@ Toda la interfaz está en español. Se llama siempre a rutas relativas (`/api/..
 | ---- | ------ | -------- |
 | `/login` | Público | Inicio de sesión |
 | `/` | Sesión | Inicio: saludo, accesos rápidos y las 3 últimas visitas |
+| `/visits` | Sesión | Listado de visitas con filtros y paginación |
+| `/visits/new` | Sesión | Registrar una visita |
+| `/visits/:id` | Sesión | Detalle de una visita |
+| `/visits/:id/edit` | Sesión | Editar una visita |
 | cualquier otra | Sesión | Página no encontrada |
 
-Las pantallas de visitas (`/visits`, `/visits/new`, `/visits/:id` y `/visits/:id/edit`) llegan en la Fase 6; hasta entonces los enlaces del inicio llevan a la página no encontrada.
+**Visitas**
+
+- **Listado.** Tabla paginada (10 por página) con filtros por colegio y por tipo de visita. Los filtros y la página viven en la dirección (`/visits?school=1&type=meeting&page=2`), así que se pueden compartir, funcionan con el botón «Atrás» y sobreviven a recargar la página. Cambiar un filtro vuelve a la primera página. Distingue entre no tener visitas y no tener visitas que coincidan con los filtros, y cada fila entera es clicable.
+- **Registro y edición.** Un único formulario para ambos casos. El docente depende del colegio elegido (solo se ofrecen los de ese colegio y se vacía al cambiar de colegio), y la fecha no admite días futuros. Valida primero en el navegador, con mensajes en español, y después muestra bajo cada campo los errores que devuelva el servidor. Si el envío falla se conserva lo escrito.
+- **Detalle.** Muestra todos los datos, con las observaciones respetando los saltos de línea. Solo el especialista que registró la visita ve los botones «Editar» y «Eliminar»; el resto ve un aviso. Quien intente abrir la edición de una visita ajena por la dirección ve un mensaje y no el formulario, y el servidor lo rechaza igualmente.
+- **Eliminación.** Pide confirmación en la misma página y es lógica: la visita deja de mostrarse en la aplicación, pero la fila se conserva (ver [Modelo de datos](#modelo-de-datos)). Si falla, la visita se mantiene y se explica el error.
+- **Avisos.** Tras registrar, guardar cambios o eliminar se muestra una confirmación en la pantalla de destino. Se puede cerrar con la «×» y, si no se cierra, desaparece sola a los 20 segundos. Una vez cerrado, no vuelve a aparecer al recargar la página.
 
 **Sesión**
 
@@ -547,7 +557,7 @@ Esta sección se actualiza con cada fase del desarrollo.
 - **API de visitas:** endpoints, filtros, paginación, validaciones, permisos de autoría, formato de errores y tests.
 - **Documentación:** el README y `CLAUDE.md`.
 - **Frontend, fundamentos:** capa de API con tipos, traducción de errores a español, sesión y guardia de rutas, pantalla de login, layout, página de inicio, componentes compartidos, estilos y tests.
-- Las demás pantallas del frontend se añadirán aquí cuando se completen.
+- **Frontend, pantallas de visitas:** listado con filtros y paginación, formulario de alta y edición, detalle, eliminación con confirmación, hooks de datos, componentes de formulario y tests.
 
 **Qué tuve que corregir de lo que generó:**
 
@@ -563,6 +573,10 @@ Esta sección se actualiza con cada fase del desarrollo.
 - Para la documentación se afirmaron comportamientos (restaurar una visita desde el admin y que el seed corre en una transacción) que no tenían test; se escribieron esos tests para respaldarlos.
 - Un test del seed comprobaba de forma demasiado débil que no se creaba nada nuevo; se reforzó.
 - Un test del login comprobaba el orden de las peticiones con `indexOf`, que devuelve `-1` si la petición no existe; al romper el código a propósito no detectaba el fallo, así que se añadió la comprobación de que la petición existe.
+- Se nombraron `visitForm.ts` y `VisitForm.tsx` (y lo mismo con los filtros) en la misma carpeta; en Windows y macOS, donde las mayúsculas no distinguen, chocaban y TypeScript lo detectó. Se renombraron los módulos de lógica.
+- Un test del formulario comprobaba que el docente se vaciaba al cambiar de colegio mirando el texto del select, que no cambia aunque el valor interno siga siendo el del colegio anterior; al romper el código a propósito no lo detectaba, y la visita se habría podido enviar con un docente de otro colegio. Se reescribió para comprobar que no se puede enviar sin elegir un docente nuevo.
+- Tras confirmar un cambio, el aviso «Cambios guardados.» seguía visible junto a la pregunta de eliminar la visita; se oculta mientras se pide la confirmación.
+- Al revisar a mano la aplicación vi que los avisos de confirmación (registrar, editar y eliminar) no se cerraban nunca; ahora tienen un botón para cerrarlos y se cierran solos a los 20 segundos, y al cerrarse se limpian del historial del navegador para que no reaparezcan al recargar.
 - En la primera revisión visual en móvil, la cabecera se apretaba (el nombre de la aplicación y «Cerrar sesión» se partían en varias líneas); se reorganizó con un punto de quiebre.
 
 **Cómo lo controlé:**
@@ -570,4 +584,4 @@ Esta sección se actualiza con cada fase del desarrollo.
 - **Todos los commits y push los hago yo.** La IA tiene prohibido hacerlos y me deja el código listo, con un mensaje de commit sugerido.
 - **Reviso cada cambio** antes de confirmarlo.
 - **Pruebo manualmente todos los casos en mi ambiente local**, fase por fase: el admin con los datos de demostración, las validaciones, la eliminación lógica y los endpoints de la API.
-- **Verificación automática:** tests y linters en cada fase, ejecutados tanto con SQLite como dentro de Docker contra PostgreSQL. Para la API de visitas, además, un recorrido completo por HTTP real contra los contenedores y una comprobación de que los tests detectan fallos introducidos a propósito (borrado real en lugar de lógico y permisos de autoría desactivados). En el frontend se hizo la misma comprobación con la expiración de sesión y la petición CSRF previa al login, y se revisaron capturas de pantalla de la aplicación en ejecución (escritorio y móvil) antes de darla por buena.
+- **Verificación automática:** tests y linters en cada fase, ejecutados tanto con SQLite como dentro de Docker contra PostgreSQL. Para la API de visitas, además, un recorrido completo por HTTP real contra los contenedores y una comprobación de que los tests detectan fallos introducidos a propósito (borrado real en lugar de lógico y permisos de autoría desactivados). En el frontend se hizo la misma comprobación con la expiración de sesión y la petición CSRF previa al login, y se revisaron capturas de pantalla de la aplicación en ejecución (escritorio y móvil) antes de darla por buena. Para las pantallas de visitas, además, un recorrido completo en un navegador real con dos especialistas (filtros, alta con errores, edición, permisos de un especialista ajeno, eliminación y comprobación de que la fila sigue en la base de datos) y la misma comprobación de tests con fallos introducidos a propósito en el cambio de colegio, la regla de autoría, la paginación y la limpieza de la caché.

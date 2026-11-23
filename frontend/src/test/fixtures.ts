@@ -13,11 +13,27 @@ export const notAuthenticated = {
   body: { detail: 'Authentication credentials were not provided.', code: 'not_authenticated' },
 }
 
+export const schoolsWire = [
+  { id: 1, name: 'Colegio San Rafael', city: 'Maracaibo' },
+  { id: 2, name: 'Colegio Santa Lucía', city: 'Caracas' },
+]
+
+export function teacherWire(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 1,
+    school: 1,
+    first_name: 'Ana',
+    last_name: 'Rojas',
+    full_name: 'Ana Rojas',
+    ...overrides,
+  }
+}
+
 export function visitWire(overrides: Record<string, unknown> = {}) {
   return {
     id: 1,
     school: { id: 1, name: 'Colegio San Rafael', city: 'Maracaibo' },
-    teacher: { id: 1, school: 1, first_name: 'Ana', last_name: 'Rojas', full_name: 'Ana Rojas' },
+    teacher: teacherWire(),
     specialist: { id: 1, full_name: 'María González' },
     visit_date: '2026-11-20',
     visit_type: 'classroom_visit',
@@ -30,4 +46,16 @@ export function visitWire(overrides: Record<string, unknown> = {}) {
 
 export function pageWire(results: unknown[], overrides: Record<string, unknown> = {}) {
   return { count: results.length, next: null, previous: null, results, ...overrides }
+}
+
+export function validationError(errors: Record<string, string>) {
+  return {
+    status: 400,
+    body: {
+      detail: 'Invalid input.',
+      errors: Object.fromEntries(
+        Object.entries(errors).map(([field, code]) => [field, [{ code, message: 'English text' }]]),
+      ),
+    },
+  }
 }
