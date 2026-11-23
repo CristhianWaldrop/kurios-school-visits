@@ -8,27 +8,48 @@ Prueba técnica de Kurios Education (Desarrollador Fullstack).
 - **Base de datos:** PostgreSQL (SQLite como alternativa local).
 - **Infraestructura:** Docker Compose.
 
-## Estado del proyecto
+## Qué hace
 
-El proyecto avanza por fases.
+- **Registrar, consultar, editar y eliminar visitas** a colegios: colegio, docente, fecha, tipo (visita en aula o encuentro) y observaciones. La eliminación es lógica: la visita deja de mostrarse pero se conserva en la base de datos.
+- **Listado con filtros** por colegio y tipo de visita, además de búsqueda de texto y rango de fechas.
+- **Validaciones** en el servidor y en el formulario: la fecha no puede ser futura y todos los campos son obligatorios.
+- **Inicio de sesión con dos roles:** los especialistas gestionan sus visitas y los administradores gestionan cualquiera.
+- **Documentación interactiva de la API** (Swagger) y **admin de Django**.
+- **Datos de demostración** precargados: colegios, docentes, especialistas y tres visitas.
 
-- [x] Fase 0: croquis del monorepo, Docker, documentación y tooling
-- [x] Fase 1: modelos del dominio y admin de Django
-- [x] Fase 2: seeds
-- [x] Fase 3: autenticación de la API
-- [x] Fase 4: API de visitas
-- [x] Fase 5: fundamentos del frontend (login, rutas protegidas e inicio)
-- [x] Fase 6: pantallas de visitas
-- [x] Fase 7: funcionalidades adicionales
-  - [x] Filtro por rango de fechas y búsqueda
-  - [x] Roles: administrador y especialista
-  - [x] Documentación OpenAPI interactiva
-- [ ] Fase 8: cierre y revisión final
+| Requisito del enunciado                                          | Dónde está                                                              |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Registrar una visita (colegio, docente, fecha, tipo, observaciones) | `/visits/new`, `POST /api/visits/`                                   |
+| Listar visitas filtrando por colegio y por tipo                  | `/visits`, `GET /api/visits/?school=…&visit_type=…`                     |
+| Consultar el detalle de una visita y editarla                    | `/visits/:id`, `/visits/:id/edit`, `PATCH /api/visits/{id}/`            |
+| Eliminación lógica                                               | Botón «Eliminar», `DELETE /api/visits/{id}/`, columna `deleted_at`      |
+| Validar fecha no futura y campos obligatorios                    | Servidor ([validators.py](backend/apps/visits/validators.py)) y formulario |
+| Backend propio con base de datos relacional                      | Django REST Framework + PostgreSQL                                      |
+| Frontend en React                                                | React + Vite + TypeScript                                               |
+| Colegios y docentes precargados                                  | Comando `seed_data` ([seeds](#datos-iniciales-seeds))                   |
+| README con ejecución, decisiones, pendientes e IA                | Este documento                                                          |
 
-Las secciones de este documento que describen funcionalidad futura lo indican expresamente.
+## Inicio rápido
+
+Con [Docker](https://docs.docker.com/get-docker/) instalado, desde la raíz del repositorio:
+
+```bash
+docker compose up --build
+```
+
+Abre http://localhost:3000 e inicia sesión con un usuario de demostración:
+
+| Rol           | Usuario          | Contraseña   |
+| ------------- | ---------------- | ------------ |
+| Especialista  | `maria.gonzalez` | `demo1234`   |
+| Administrador | `admin`          | `admin12345` |
+
+Otros accesos: documentación Swagger en http://localhost:3000/api/docs/ y admin de Django en http://localhost:3000/admin/. Más abajo están la [ejecución local sin Docker](#ejecución-local) y el resto de detalles.
 
 ## Contenido
 
+- [Qué hace](#qué-hace)
+- [Inicio rápido](#inicio-rápido)
 - [Estructura del repositorio](#estructura-del-repositorio)
 - [Cómo ejecutar el proyecto](#cómo-ejecutar-el-proyecto)
 - [Variables de entorno](#variables-de-entorno)
@@ -106,7 +127,7 @@ Si los puertos 3000 u 8000 están ocupados, cámbialos con `FRONTEND_PORT` y `BA
 
 > Recomendamos usar Docker. La ejecución local es útil para desarrollar con recarga en caliente.
 
-Requisitos: Python 3.12 o superior, Node.js 22 o superior y npm.
+Requisitos: Python 3.12 o superior, Node.js 22.12 o superior y npm.
 
 **Backend** (en una terminal):
 
@@ -198,7 +219,7 @@ docker compose exec backend python manage.py seed_data   # Docker
 | Colegios       | 4        | Colegio San Rafael, Unidad Educativa Las Palmas, Colegio Santa Lucía, Unidad Educativa Monte Sinaí |
 | Docentes       | 12       | 3 por colegio                                                                                 |
 | Especialistas  | 3        | Con usuario para iniciar sesión                                                               |
-| Administrador  | 1        | Usuario del admin de Django                                                                   |
+| Administrador  | 1        | Entra en la aplicación (con el rol de administrador) y en el admin de Django                  |
 | Visitas        | 3        | Una por especialista: 2 visitas en aula y 1 encuentro, de hace 2, 9 y 20 días                 |
 
 Todos los datos son ficticios. Las fechas de las visitas se calculan respecto al día del primer arranque, así que nunca caen en el futuro.
@@ -606,22 +627,33 @@ npm run build             # build de producción
 - **Autenticación por sesión de Django con CSRF.** No hay tokens en JavaScript, se reutiliza el sistema de usuarios del admin y, al ser same-origin, no requiere CORS.
 - **Eliminación lógica con `deleted_at`.** Conserva el historial y permite saber cuándo se eliminó, a diferencia de un booleano.
 - **Reglas de negocio en el backend**, validación del cliente solo para respuesta rápida.
+- **Roles deducidos de la cuenta de Django** (`is_staff` = administrador, perfil de especialista = especialista), en lugar de un campo propio: un solo sistema de usuarios para la aplicación y el admin, sin estados incoherentes.
+- **API documentada desde el código** (`drf-spectacular`) y verificada por un test, para que la documentación no se desactualice.
+- **Las reglas de coherencia viven en un solo lugar** (`validators.py`) y las usan tanto el modelo como la API.
 - **TanStack Query** para el estado del servidor: caché, carga, errores e invalidación tras mutaciones.
 - **SASS con CSS Modules** y variables de diseño centralizadas.
 - **Variables de entorno con valores por defecto funcionales**, para que `docker compose up --build` funcione sin configurar nada.
 
 ## Qué quedó fuera y mejoras futuras
 
-Se completará al cierre del proyecto. Candidatas, ordenadas por valor:
+**Fuera del alcance, a propósito:**
 
-- Integración continua (tests y linters en cada push).
+- Gestión de colegios, docentes y especialistas desde la aplicación: el enunciado indica que se precargan con seeds, y se administran desde el admin de Django.
+- Restaurar visitas eliminadas desde la aplicación: se puede desde el admin de Django (vaciando `deleted_at`).
+- Cambio y recuperación de contraseña desde la aplicación.
+- Búsqueda insensible a tildes (requiere la extensión `unaccent` de PostgreSQL).
+
+**Mejoras para una siguiente iteración, ordenadas por valor:**
+
+- Integración continua (GitHub Actions) con tests y linters en cada push.
+- Pruebas end to end automatizadas. El repositorio tiene tests de unidad y de integración; los recorridos completos en un navegador real se hicieron con scripts de verificación que no se incluyeron.
 - Límite de intentos de inicio de sesión.
-- Cookies `Secure` y cabeceras HTTPS para un despliegue con TLS (hoy se sirve por HTTP en `localhost`).
-- Pruebas end to end.
+- Cookies `Secure` y HTTPS para un despliegue con TLS (hoy se sirve por HTTP en `localhost`), y una imagen de producción del backend sin dependencias de desarrollo (la actual las incluye para poder ejecutar `pytest` dentro del contenedor).
+- Historial de cambios de cada visita (auditoría).
+- Paginación con números de página y orden configurable en el listado.
+- Exportar visitas a CSV.
 
 ## Uso de inteligencia artificial
-
-Esta sección se actualiza con cada fase del desarrollo.
 
 **Herramienta utilizada:** Claude Code (asistente de programación de Anthropic) integrado en VS Code.
 
@@ -632,7 +664,8 @@ Esta sección se actualiza con cada fase del desarrollo.
 - **Stack y ejecución:** Vite y React en lugar de Next.js, Django con Django REST Framework, PostgreSQL con SQLite como alternativa local, y poder ejecutar el proyecto tanto en local como con Docker.
 - **Modelo de datos:** colegios, docentes, especialistas y visitas, sus restricciones y la eliminación lógica.
 - **Producto:** añadir el modelo de especialista y la autenticación de especialistas (más allá del enunciado), los datos de demostración, que todo el frontend esté en español y la zona horaria `America/Caracas`.
-- **Permisos:** todos los especialistas ven las visitas y solo el autor las edita o elimina.
+- **Funcionalidades adicionales:** la búsqueda de texto y el filtro por fechas (incluyendo que busque en el nombre del docente y del colegio), el rol de administrador y la documentación interactiva de la API pública.
+- **Permisos:** todos ven las visitas; el especialista solo edita o elimina las suyas, y el administrador (un usuario con `is_staff`) gestiona cualquiera y elige el especialista.
 - **Contrato de errores:** el backend devuelve códigos y el frontend los traduce al español.
 - **Proceso:** usar los generadores oficiales de Django y Vite, trabajar por fases, y las reglas de [CLAUDE.md](CLAUDE.md).
 
@@ -646,6 +679,7 @@ Esta sección se actualiza con cada fase del desarrollo.
 - **Documentación:** el README y `CLAUDE.md`.
 - **Frontend, fundamentos:** capa de API con tipos, traducción de errores a español, sesión y guardia de rutas, pantalla de login, layout, página de inicio, componentes compartidos, estilos y tests.
 - **Frontend, pantallas de visitas:** listado con filtros y paginación, formulario de alta y edición, detalle, eliminación con confirmación, hooks de datos, componentes de formulario y tests.
+- **Cierre:** revisión del README completo, reestructuración de su inicio (qué hace, inicio rápido y requisitos del enunciado), ajuste de versiones y de tests para equipos lentos, y las verificaciones desde un clon limpio.
 - **Documentación OpenAPI:** configuración de `drf-spectacular`, anotaciones de los endpoints, el hook que añade los errores a cada operación, la plantilla de Swagger UI y sus tests.
 - **Roles:** concepto de rol y permisos del backend, inicio de sesión del administrador, endpoint de especialistas, autoría de las visitas, el desplegable «Especialista» y los permisos en la interfaz, con tests.
 - **Búsqueda y filtro por fechas:** filtros del backend con validación, campos nuevos en el listado, pausa al escribir, filtros en la URL, mensajes en español y tests en ambos lados.
@@ -675,10 +709,15 @@ Esta sección se actualiza con cada fase del desarrollo.
 - Tras confirmar un cambio, el aviso «Cambios guardados.» seguía visible junto a la pregunta de eliminar la visita; se oculta mientras se pide la confirmación.
 - Al revisar a mano la aplicación vi que los avisos de confirmación (registrar, editar y eliminar) no se cerraban nunca; ahora tienen un botón para cerrarlos y se cierran solos a los 20 segundos, y al cerrarse se limpian del historial del navegador para que no reaparezcan al recargar.
 - En la primera revisión visual en móvil, la cabecera se apretaba (el nombre de la aplicación y «Cerrar sesión» se partían en varias líneas); se reorganizó con un punto de quiebre.
+- En la revisión final, `npm install` mostraba advertencias de versión de Node porque `jsdom 31` exigía Node 22.22 o superior, más de lo que necesita el resto del proyecto; se fijó `jsdom 28`, se declaró `"engines": {"node": ">=22.12.0"}` y el README indica ese mínimo.
+- En la revisión final, un test del frontend falló una vez con la máquina saturada porque la espera por defecto de Testing Library (un segundo) se quedaba corta; se subió a cinco segundos para todos los tests, de modo que no falle en equipos lentos.
 
 **Cómo lo controlé:**
 
 - **Todos los commits y push los hago yo.** La IA tiene prohibido hacerlos y me deja el código listo, con un mensaje de commit sugerido.
 - **Reviso cada cambio** antes de confirmarlo.
 - **Pruebo manualmente todos los casos en mi ambiente local**, fase por fase: el admin con los datos de demostración, las validaciones, la eliminación lógica y los endpoints de la API.
-- **Verificación automática:** tests y linters en cada fase, ejecutados tanto con SQLite como dentro de Docker contra PostgreSQL. Para la API de visitas, además, un recorrido completo por HTTP real contra los contenedores y una comprobación de que los tests detectan fallos introducidos a propósito (borrado real en lugar de lógico y permisos de autoría desactivados). En el frontend se hizo la misma comprobación con la expiración de sesión y la petición CSRF previa al login, y se revisaron capturas de pantalla de la aplicación en ejecución (escritorio y móvil) antes de darla por buena. Para las pantallas de visitas, además, un recorrido completo en un navegador real con dos especialistas (filtros, alta con errores, edición, permisos de un especialista ajeno, eliminación y comprobación de que la fila sigue en la base de datos) y la misma comprobación de tests con fallos introducidos a propósito en el cambio de colegio, la regla de autoría, la paginación y la limpieza de la caché.
+- **Tests y linters en cada fase**, ejecutados con SQLite y dentro de Docker contra PostgreSQL.
+- **Los tests se ponen a prueba a sí mismos:** en las reglas importantes (eliminación lógica, permisos de autoría y de administrador, expiración de sesión, token CSRF, cambio de colegio, paginación, filtros y búsqueda, avisos) se introdujo un fallo a propósito en el código para comprobar que algún test lo detecta. Varios no lo detectaban y se corrigieron (ver la lista anterior).
+- **Recorridos reales en un navegador** (Chrome automatizado) contra la aplicación en Docker en cada pantalla y flujo: sesión, filtros, alta con errores, edición, eliminación, permisos de especialista y de administrador, la documentación Swagger probando endpoints, y la comprobación de que la fila eliminada sigue en la base de datos. Además, capturas de pantalla de escritorio y móvil revisadas antes de dar cada pantalla por buena.
+- **Revisión final desde un clon limpio:** se clonó el repositorio tal como está en GitHub en una carpeta nueva y se comprobaron los tres modos de ejecución: Docker construido sin caché (93 s de build y la aplicación lista a los 139 s), backend local con entorno virtual nuevo (`migrate`, `seed_data`, tests y lint) y frontend local con el servidor de desarrollo de Vite. Los enlaces del README se comprueban de forma automática (todos válidos).

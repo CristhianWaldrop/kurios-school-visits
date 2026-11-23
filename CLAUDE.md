@@ -100,6 +100,8 @@ Layout: `src/app` (root component, providers, routing), `src/api` (HTTP client a
 components), `src/styles` (SASS variables and globals), `src/test` (test utilities).
 
 - TypeScript in strict mode. No `any` (the linter forbids it); prefer `unknown` and narrow. Use `import type`.
+- Node.js 22.12 or newer (declared in `package.json` `engines`). Before adding or upgrading a dependency, check that its
+  own `engines` range includes 22.12, so `npm install` stays free of warnings.
 - Function components and hooks only. Named exports; one component per file; file name equals component name.
 - **Data fetching goes through TanStack Query** (queries and mutations in feature hooks, never in
   components). Component-local UI state uses `useState`; share state via context only when props would
