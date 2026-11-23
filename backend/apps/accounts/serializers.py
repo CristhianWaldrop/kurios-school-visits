@@ -8,6 +8,13 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(trim_whitespace=False)
 
 
+class SpecialistSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Specialist
+        fields = ["id", "full_name"]
+        read_only_fields = fields
+
+
 class SpecialistSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", read_only=True)
     first_name = serializers.CharField(source="user.first_name", read_only=True)

@@ -5,6 +5,10 @@ from django.utils import timezone
 from apps.accounts.models import Specialist
 from apps.core.models import TimeStampedModel
 from apps.directory.models import School, Teacher
+from apps.visits.validators import (
+    validate_teacher_belongs_to_school,
+    validate_visit_date_not_future,
+)
 
 
 class VisitType(models.TextChoices):
@@ -66,10 +70,16 @@ class Visit(TimeStampedModel):
 
     def clean(self) -> None:
         errors = {}
-        if self.visit_date and self.visit_date > timezone.localdate():
-            errors["visit_date"] = "The visit date cannot be in the future."
-        if self.teacher_id and self.school_id and self.teacher.school_id != self.school_id:
-            errors["teacher"] = "The teacher does not belong to the selected school."
+        if self.visit_date:
+            try:
+                validate_visit_date_not_future(self.visit_date)
+            except ValidationError as error:
+                errors["visit_date"] = error
+        if self.teacher_id and self.school_id:
+            try:
+                validate_teacher_belongs_to_school(self.teacher, self.school)
+            except ValidationError as error:
+                errors["teacher"] = error
         if errors:
             raise ValidationError(errors)
 

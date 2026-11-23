@@ -66,7 +66,10 @@ class TestLogin:
         )
 
         assert response.status_code == 401
-        assert response.json() == {"detail": "Invalid username or password."}
+        assert response.json() == {
+            "detail": "Invalid username or password.",
+            "code": "invalid_credentials",
+        }
         assert csrf_client.get(reverse("auth-me")).status_code == 401
 
     def test_does_not_reveal_whether_the_username_exists(self, csrf_client):
@@ -77,7 +80,10 @@ class TestLogin:
         )
 
         assert response.status_code == 401
-        assert response.json() == {"detail": "Invalid username or password."}
+        assert response.json() == {
+            "detail": "Invalid username or password.",
+            "code": "invalid_credentials",
+        }
 
     def test_rejects_an_inactive_specialist(self, csrf_client):
         specialist = SpecialistFactory(user__is_active=False)
@@ -106,7 +112,9 @@ class TestLogin:
         response = post_with_csrf(csrf_client, reverse("auth-login"), {})
 
         assert response.status_code == 400
-        assert set(response.json()) == {"username", "password"}
+        errors = response.json()["errors"]
+        assert set(errors) == {"username", "password"}
+        assert errors["username"][0]["code"] == "required"
 
     def test_requires_a_csrf_token(self, specialist):
         client = APIClient(enforce_csrf_checks=True)
@@ -141,7 +149,10 @@ class TestMe:
         response = api_client.get(reverse("auth-me"))
 
         assert response.status_code == 403
-        assert response.json() == {"detail": "The authenticated user is not a specialist."}
+        assert response.json() == {
+            "detail": "The authenticated user is not a specialist.",
+            "code": "permission_denied",
+        }
 
 
 class TestLogout:

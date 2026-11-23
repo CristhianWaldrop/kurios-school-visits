@@ -16,7 +16,7 @@ El proyecto avanza por fases.
 - [x] Fase 1: modelos del dominio y admin de Django
 - [x] Fase 2: seeds
 - [x] Fase 3: autenticación de la API
-- [ ] Fase 4: API de visitas
+- [x] Fase 4: API de visitas
 - [ ] Fase 5: fundamentos del frontend (login y rutas)
 - [ ] Fase 6: pantallas de visitas
 - [ ] Fase 7: cierre y revisión final
@@ -317,6 +317,13 @@ Todos los endpoints exigen una sesión de **especialista** salvo los marcados co
 | GET    | `/api/auth/csrf/`   | Público  | Fija la cookie `csrftoken` (204)                     |
 | POST   | `/api/auth/login/`  | Público  | Inicia sesión con `username` y `password`            |
 | POST   | `/api/auth/logout/` | Sesión   | Cierra la sesión (204)                               |
+| GET    | `/api/schools/`     | Sesión   | Colegios (sin paginar, ordenados por nombre)         |
+| GET    | `/api/teachers/`    | Sesión   | Docentes (sin paginar); filtro `?school=<id>`        |
+| GET    | `/api/visits/`      | Sesión   | Visitas, paginadas; filtros `?school=<id>&visit_type=<tipo>` |
+| POST   | `/api/visits/`      | Sesión   | Registra una visita (201)                            |
+| GET    | `/api/visits/{id}/` | Sesión   | Detalle de una visita                                |
+| PATCH / PUT | `/api/visits/{id}/` | Autor | Edita una visita (parcial / completa)             |
+| DELETE | `/api/visits/{id}/` | Autor    | Eliminación lógica (204)                             |
 | GET    | `/api/auth/me/`     | Sesión   | Especialista autenticado                             |
 
 Los endpoints de colegios, docentes y visitas se documentarán aquí al implementarse (Fase 4).
@@ -348,7 +355,7 @@ Códigos de estado:
 
 | Código | Cuándo                                                                               |
 | ------ | ------------------------------------------------------------------------------------ |
-| 400    | Faltan `username` o `password`                                                       |
+| 400    | Faltan `username` o `password` (ver [formato de errores](#formato-de-errores))        |
 | 401    | Sin sesión, o credenciales inválidas (mismo mensaje para usuario inexistente, contraseña errónea, usuario inactivo o sin perfil de especialista) |
 | 403    | Sesión válida de un usuario que no es especialista, o token CSRF ausente o inválido (`{"code": "csrf_failed"}`) |
 
@@ -361,6 +368,81 @@ curl -b cookies.txt -c cookies.txt -H "X-CSRFToken: $TOKEN" -H "Content-Type: ap
   -d '{"username": "maria.gonzalez", "password": "demo1234"}' http://localhost:3000/api/auth/login/
 curl -b cookies.txt http://localhost:3000/api/auth/me/
 ```
+
+### Visitas
+
+**Permisos.** Cualquier especialista autenticado puede ver todas las visitas. Solo quien registró una visita puede editarla o eliminarla (`403` para los demás). El especialista autor se toma de la sesión y no se puede elegir ni cambiar desde el cliente.
+
+**Listado** (`GET /api/visits/`): ordenado de la visita más reciente a la más antigua y sin las eliminadas. Está paginado con `page` y `page_size` (10 por defecto, máximo 50):
+
+```json
+{
+  "count": 3,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "school": { "id": 1, "name": "Colegio San Rafael", "city": "Maracaibo" },
+      "teacher": { "id": 1, "school": 1, "first_name": "Ana", "last_name": "Rojas", "full_name": "Ana Rojas" },
+      "specialist": { "id": 1, "full_name": "María González" },
+      "visit_date": "2026-11-20",
+      "visit_type": "classroom_visit",
+      "observations": "La docente organizó el repaso de fracciones...",
+      "created_at": "2026-11-22T18:15:00-04:00",
+      "updated_at": "2026-11-22T18:15:00-04:00"
+    }
+  ]
+}
+```
+
+Los filtros se pueden combinar: `GET /api/visits/?school=1&visit_type=meeting`. Un valor inexistente responde `400`.
+
+**Alta y edición** (`POST`, `PUT`, `PATCH`). La respuesta usa el mismo formato que el listado. El cuerpo se envía con identificadores (`school_id`, `teacher_id`), mientras que la lectura devuelve los objetos anidados:
+
+```json
+{
+  "school_id": 1,
+  "teacher_id": 1,
+  "visit_date": "2026-11-20",
+  "visit_type": "classroom_visit",
+  "observations": "Texto de la observación"
+}
+```
+
+Tipos de visita (`visit_type`): `classroom_visit` (visita en aula) y `meeting` (encuentro).
+
+**Reglas de validación** (se aplican en el servidor):
+
+| Campo                 | Regla                                              | Código de error         |
+| --------------------- | -------------------------------------------------- | ----------------------- |
+| Todos                 | Obligatorios al crear y en `PUT`                   | `required`              |
+| `observations`        | No puede estar vacío ni ser solo espacios          | `blank`                 |
+| `visit_date`          | Fecha válida (`AAAA-MM-DD`)                        | `invalid`               |
+| `visit_date`          | No puede ser futura (hoy sí es válido)             | `future_date`           |
+| `visit_type`          | Debe ser uno de los tipos válidos                  | `invalid_choice`        |
+| `school_id`, `teacher_id` | Deben existir                                  | `does_not_exist`        |
+| `teacher_id`          | El docente debe pertenecer al colegio elegido (también al editar solo uno de los dos) | `teacher_not_in_school` |
+
+**Eliminación** (`DELETE`). Es lógica: responde `204`, se rellena `deleted_at` y la visita deja de aparecer en el listado y en el detalle (`404`), pero la fila se conserva en la base de datos.
+
+### Formato de errores
+
+Todos los errores incluyen un código estable que el frontend traduce al español. El mensaje en inglés viaja solo como respaldo.
+
+Errores de validación (`400`): un arreglo por campo, cada uno con `code` y `message`:
+
+```json
+{
+  "detail": "Invalid input.",
+  "errors": {
+    "visit_date": [{ "code": "future_date", "message": "The visit date cannot be in the future." }],
+    "teacher_id": [{ "code": "teacher_not_in_school", "message": "The teacher does not belong to the selected school." }]
+  }
+}
+```
+
+Resto de errores: `{"detail": "...", "code": "..."}`, con los códigos `not_authenticated` (401), `invalid_credentials` (401), `permission_denied` (403), `csrf_failed` (403) y `not_found` (404).
 
 ## Tests y calidad de código
 
@@ -410,14 +492,30 @@ Se completará al cierre del proyecto. Candidatas, ordenadas por valor:
 
 ## Uso de inteligencia artificial
 
-> Borrador de la declaración; se completa con el detalle final al cerrar el desarrollo.
+Esta sección se actualiza con cada fase del desarrollo.
 
 **Herramienta utilizada:** Claude Code (asistente de programación de Anthropic) integrado en VS Code.
 
-**En qué partes me apoyé en ella:**
+**Cómo trabajamos.** Usé la IA como acelerador de código. **Todas las decisiones de arquitectura y de producto las tomé yo**: la IA me presentó opciones y recomendaciones, y yo elegí, ajusté o descarté cada una. Dividí el reto en fases. En cada una la IA escribió el código y los tests, y ejecutó tests, linters y pruebas contra la aplicación en marcha. Yo revisé el resultado antes de cada commit. Las reglas de trabajo (todo en inglés, pocos comentarios, tests por cada cambio, solo yo hago commits y push) están escritas en [CLAUDE.md](CLAUDE.md), que la IA lee al empezar.
 
-- Croquis del monorepo: generado con los comandos oficiales (`django-admin startproject`, `startapp` y `create-vite`) y adaptado después con configuración por entorno, Docker, tooling y documentación inicial.
-- Escritura de tests y código de las fases siguientes (se detallará por fase).
+**Decisiones que tomé yo** (la IA no las tomó por mí):
+
+- **Stack y ejecución:** Vite y React en lugar de Next.js, Django con Django REST Framework, PostgreSQL con SQLite como alternativa local, y poder ejecutar el proyecto tanto en local como con Docker.
+- **Modelo de datos:** colegios, docentes, especialistas y visitas, sus restricciones y la eliminación lógica.
+- **Producto:** añadir el modelo de especialista y la autenticación de especialistas (más allá del enunciado), los datos de demostración, que todo el frontend esté en español y la zona horaria `America/Caracas`.
+- **Permisos:** todos los especialistas ven las visitas y solo el autor las edita o elimina.
+- **Contrato de errores:** el backend devuelve códigos y el frontend los traduce al español.
+- **Proceso:** usar los generadores oficiales de Django y Vite, trabajar por fases, y las reglas de [CLAUDE.md](CLAUDE.md).
+
+**En qué partes la IA escribió código** (a partir de las decisiones anteriores):
+
+- **Croquis del monorepo:** generado con los comandos oficiales (`django-admin startproject`, `startapp` y `create-vite`) y adaptado después con configuración por entorno, Docker, tooling y documentación inicial.
+- **Modelos y admin:** modelos, migraciones, registro en el admin de Django, factories y tests.
+- **Seeds:** comando `seed_data` idempotente con los datos de demostración, y sus tests.
+- **Autenticación de la API:** login, logout y `me` con sesión y CSRF, permisos y tests.
+- **API de visitas:** endpoints, filtros, paginación, validaciones, permisos de autoría, formato de errores y tests.
+- **Documentación:** el README y `CLAUDE.md`.
+- Las fases del frontend se añadirán aquí cuando se completen.
 
 **Qué tuve que corregir de lo que generó:**
 
@@ -426,5 +524,16 @@ Se completará al cierre del proyecto. Candidatas, ordenadas por valor:
 - Se intentó usar TypeScript 7, incompatible con `typescript-eslint`; se fijó la serie 6.0.
 - Se eligió Django 5.2 LTS en lugar de la última versión disponible (6.1), por ser LTS.
 - Una regla de lint (`RUF012`) producía falsos positivos con las clases de DRF y se desactivó.
+- El contenedor del backend mostraba un error de permisos en los logs de gunicorn porque el usuario se creaba sin directorio personal; se corrigió en el `Dockerfile`.
+- Los tests del admin fallaban por el almacenamiento de estáticos de producción y tardaban más de 30 segundos por el hash de contraseñas; ambos se ajustaron solo para el entorno de tests.
+- Al revisar el admin salió a la vista que la zona horaria por defecto (`UTC`) dejaría registrar el día siguiente a ciertas horas; se cambió a `America/Caracas`.
+- Un import circular al registrar el permiso por defecto de la API; se resolvió moviendo imports que solo servían para tipado.
+- Para la documentación se afirmaron comportamientos (restaurar una visita desde el admin y que el seed corre en una transacción) que no tenían test; se escribieron esos tests para respaldarlos.
+- Un test del seed comprobaba de forma demasiado débil que no se creaba nada nuevo; se reforzó.
 
-**Cómo lo controlé:** todos los commits los hago yo tras revisar cada cambio; los tests, linters y builds se ejecutan antes de confirmar.
+**Cómo lo controlé:**
+
+- **Todos los commits y push los hago yo.** La IA tiene prohibido hacerlos y me deja el código listo, con un mensaje de commit sugerido.
+- **Reviso cada cambio** antes de confirmarlo.
+- **Pruebo manualmente todos los casos en mi ambiente local**, fase por fase: el admin con los datos de demostración, las validaciones, la eliminación lógica y los endpoints de la API.
+- **Verificación automática:** tests y linters en cada fase, ejecutados tanto con SQLite como dentro de Docker contra PostgreSQL. Para la API de visitas, además, un recorrido completo por HTTP real contra los contenedores y una comprobación de que los tests detectan fallos introducidos a propósito (borrado real en lugar de lógico y permisos de autoría desactivados).
