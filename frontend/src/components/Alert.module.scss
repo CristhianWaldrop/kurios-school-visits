@@ -1,0 +1,10 @@
+@use '../styles/variables' as *;
+
+.alert {
+  padding: $space-3 $space-4;
+  border: 1px solid $color-danger-border;
+  border-radius: $radius;
+  background: $color-danger-soft;
+  color: $color-danger;
+  font-size: $font-size-sm;
+}

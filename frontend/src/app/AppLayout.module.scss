@@ -1,0 +1,87 @@
+@use '../styles/variables' as *;
+
+.shell {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+.header {
+  border-bottom: 1px solid $color-border;
+  background: $color-surface;
+}
+
+.bar {
+  display: flex;
+  max-width: $content-width;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $space-2 $space-6;
+  margin: 0 auto;
+  padding: $space-3 $space-4;
+}
+
+.brand {
+  font-weight: 600;
+  color: $color-text;
+  text-decoration: none;
+  white-space: nowrap;
+
+  &:hover {
+    color: $color-text;
+  }
+}
+
+.nav {
+  display: flex;
+  flex: 1;
+  gap: $space-1;
+
+  @media (max-width: $breakpoint-sm) {
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
+.link {
+  padding: $space-1 $space-3;
+  border-radius: $radius;
+  color: $color-muted;
+  text-decoration: none;
+  transition:
+    background-color $transition,
+    color $transition;
+
+  &:hover {
+    background: $color-bg;
+    color: $color-text;
+  }
+}
+
+.active {
+  background: $color-accent-soft;
+  color: $color-accent;
+
+  &:hover {
+    background: $color-accent-soft;
+    color: $color-accent;
+  }
+}
+
+.session {
+  display: flex;
+  align-items: center;
+  gap: $space-3;
+  margin-left: auto;
+  white-space: nowrap;
+  font-size: $font-size-sm;
+  color: $color-muted;
+}
+
+.main {
+  width: 100%;
+  max-width: $content-width;
+  flex: 1;
+  margin: 0 auto;
+  padding: $space-8 $space-4;
+}

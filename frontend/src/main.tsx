@@ -1,5 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
 
 import { App } from './app/App'
 import { AppProviders } from './app/AppProviders'
@@ -12,8 +13,10 @@ if (!container) {
 
 createRoot(container).render(
   <StrictMode>
-    <AppProviders>
-      <App />
-    </AppProviders>
+    <BrowserRouter>
+      <AppProviders>
+        <App />
+      </AppProviders>
+    </BrowserRouter>
   </StrictMode>,
 )

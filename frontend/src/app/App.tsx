@@ -1,18 +1,21 @@
-import { ApiStatus } from '../features/health/ApiStatus'
-import styles from './App.module.scss'
+import { Route, Routes } from 'react-router-dom'
+
+import { LoginPage } from '../features/auth/LoginPage'
+import { ProtectedRoute } from '../features/auth/ProtectedRoute'
+import { HomePage } from '../features/home/HomePage'
+import { AppLayout } from './AppLayout'
+import { NotFoundPage } from './NotFoundPage'
 
 export function App() {
   return (
-    <div className={styles.shell}>
-      <header className={styles.header}>
-        <h1>Registro de visitas</h1>
-      </header>
-      <main className={styles.main}>
-        <p>Aplicación en construcción.</p>
-      </main>
-      <footer className={styles.footer}>
-        <ApiStatus />
-      </footer>
-    </div>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route element={<ProtectedRoute />}>
+        <Route element={<AppLayout />}>
+          <Route index element={<HomePage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+      </Route>
+    </Routes>
   )
 }

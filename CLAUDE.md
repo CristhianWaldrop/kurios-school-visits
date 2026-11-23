@@ -107,6 +107,8 @@ components), `src/styles` (SASS variables and globals), `src/test` (test utiliti
   `role="alert"` for async feedback.
 - **Styling**: SASS with CSS Modules (`Component.module.scss`), design tokens in `src/styles/_variables.scss`. No inline styles for
   anything other than dynamic values.
+- **All user-facing text is Spanish**, including validation and error messages. The backend sends stable error codes
+  and the frontend translates them in one place (`src/api/errors.ts`); never show backend English messages to users.
 - Routes that need a session sit behind an auth guard; the API client sends cookies and the CSRF token.
 - **Configuration**: build-time values via `import.meta.env.VITE_*`. The API is always called through the relative
   `/api` path (Vite proxy in development, nginx proxy in Docker), so no CORS configuration is needed.
@@ -116,6 +118,25 @@ components), `src/styles` (SASS variables and globals), `src/test` (test utiliti
   - Mock the network boundary (`fetch`), never internal modules or hooks.
   - Every component, hook and API function ships with tests, including loading, error and empty states.
 - `npm run lint`, `npm run format:check`, `npm run typecheck` and `npm test` must all pass.
+
+## Visual design brief (frontend)
+
+The goal is a sober internal tool that does not look AI-generated. Decide visuals from this brief; do not fall back to
+generic defaults.
+
+- **Character:** plain administrative tool, medium density, tables for tabular data, content-first. No marketing tone.
+- **Color:** cool neutrals plus one accent (the blue in `_variables.scss`). Red and green only for error and success states.
+  No gradients.
+- **Type:** the system font stack, two weights, a short size scale. Sentence case everywhere.
+- **Shape:** small radius, 1px borders instead of shadows, one subtle shadow at most for overlays. Content max width about
+  1100px, spacing on a 4px scale.
+- **Never:** gradients, glassmorphism, emoji or icons inside colored circles, three identical cards in a row as a hero,
+  decorative animation, placeholder or marketing copy ("supercharge your...").
+- **Motion:** only short (about 150ms) transitions on hover and focus.
+- **Copy:** specific, domain-aware Spanish (visits, schools, teachers), written for the people who actually use the app.
+- **Accessibility:** AA contrast, visible focus ring, labels on every control, semantic elements before ARIA.
+- Define every color, spacing value and radius as a token in `src/styles/_variables.scss`; components never hardcode them.
+- Review the rendered result (screenshots) before calling a screen done.
 
 ## Docker
 

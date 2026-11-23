@@ -1,0 +1,57 @@
+@use '../../styles/variables' as *;
+
+.wrapper {
+  overflow-x: auto;
+  border: 1px solid $color-border;
+  border-radius: $radius;
+  background: $color-surface;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: $font-size-sm;
+}
+
+.table th,
+.table td {
+  padding: $space-3 $space-4;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table th {
+  border-bottom: 1px solid $color-border;
+  font-weight: 600;
+  color: $color-muted;
+}
+
+.table tbody tr + tr td {
+  border-top: 1px solid $color-border;
+}
+
+.row {
+  position: relative;
+  cursor: pointer;
+
+  &:hover {
+    background: $color-bg;
+  }
+}
+
+.link {
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  &:focus-visible {
+    outline: none;
+  }
+
+  &:focus-visible::after {
+    outline: 2px solid $color-accent;
+    outline-offset: -2px;
+  }
+}

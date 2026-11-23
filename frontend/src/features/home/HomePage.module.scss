@@ -1,0 +1,42 @@
+@use '../../styles/variables' as *;
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: $space-4;
+  margin-bottom: $space-8;
+
+  p {
+    margin-top: $space-1;
+    color: $color-muted;
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-3;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: $space-4;
+}
+
+.empty {
+  padding: $space-8 $space-4;
+  border: 1px dashed $color-border-strong;
+  border-radius: $radius;
+  color: $color-muted;
+  text-align: center;
+}

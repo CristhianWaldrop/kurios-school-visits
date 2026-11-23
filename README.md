@@ -17,7 +17,7 @@ El proyecto avanza por fases.
 - [x] Fase 2: seeds
 - [x] Fase 3: autenticación de la API
 - [x] Fase 4: API de visitas
-- [ ] Fase 5: fundamentos del frontend (login y rutas)
+- [x] Fase 5: fundamentos del frontend (login, rutas protegidas e inicio)
 - [ ] Fase 6: pantallas de visitas
 - [ ] Fase 7: cierre y revisión final
 
@@ -54,11 +54,13 @@ Las secciones de este documento que describen funcionalidad futura lo indican ex
 │   └── entrypoint.sh         migraciones al iniciar el contenedor
 ├── frontend/                 SPA en React
 │   ├── src/
-│   │   ├── app/              componente raíz y providers
-│   │   ├── api/              cliente HTTP y funciones por endpoint
-│   │   ├── features/         una carpeta por funcionalidad
-│   │   ├── styles/           variables y estilos globales (SASS)
-│   │   └── test/             utilidades de test
+│   │   ├── app/              rutas, layout, providers y cliente de consultas
+│   │   ├── api/              cliente HTTP, funciones por endpoint y traducción de errores
+│   │   ├── components/       componentes compartidos (botón, campo, alerta...)
+│   │   ├── features/         una carpeta por funcionalidad (auth, home, visits)
+│   │   ├── lib/              utilidades (formato de fechas)
+│   │   ├── styles/           variables de diseño y estilos globales (SASS)
+│   │   └── test/             utilidades de test (mock de red, fixtures)
 │   ├── Dockerfile            build con Node y servidor nginx
 │   └── nginx.conf            sirve la SPA y hace proxy de /api, /admin y /static
 ├── docker-compose.yml
@@ -444,6 +446,35 @@ Errores de validación (`400`): un arreglo por campo, cada uno con `code` y `mes
 
 Resto de errores: `{"detail": "...", "code": "..."}`, con los códigos `not_authenticated` (401), `invalid_credentials` (401), `permission_denied` (403), `csrf_failed` (403) y `not_found` (404).
 
+## Frontend
+
+Toda la interfaz está en español. Se llama siempre a rutas relativas (`/api/...`), de modo que las cookies de sesión y el token CSRF funcionan sin CORS.
+
+**Rutas**
+
+| Ruta | Acceso | Pantalla |
+| ---- | ------ | -------- |
+| `/login` | Público | Inicio de sesión |
+| `/` | Sesión | Inicio: saludo, accesos rápidos y las 3 últimas visitas |
+| cualquier otra | Sesión | Página no encontrada |
+
+Las pantallas de visitas (`/visits`, `/visits/new`, `/visits/:id` y `/visits/:id/edit`) llegan en la Fase 6; hasta entonces los enlaces del inicio llevan a la página no encontrada.
+
+**Sesión**
+
+- Una guardia (`ProtectedRoute`) comprueba la sesión con `GET /api/auth/me/`. Sin sesión redirige a `/login` y, tras iniciar sesión, devuelve a la página que se había pedido.
+- Si la sesión caduca mientras se usa la aplicación (cualquier petición responde `401`), se vuelve al inicio de sesión.
+- Si no se puede verificar la sesión (por ejemplo, el servidor no responde) se muestra un aviso con el botón «Reintentar».
+- Antes de iniciar sesión se pide la cookie CSRF, y el cliente HTTP envía el token en las peticiones que modifican datos.
+
+**Errores en español.** El backend responde con códigos estables (`future_date`, `teacher_not_in_school`, `invalid_credentials`...). El frontend los traduce en un único sitio, [`src/api/errors.ts`](frontend/src/api/errors.ts), y nunca muestra los mensajes en inglés del backend.
+
+**Capa de API.** `src/api` es el único lugar que conoce el formato de red: convierte `snake_case` a `camelCase` y expone funciones tipadas para autenticación, colegios, docentes y visitas.
+
+**Tablas de visitas.** Cada fila es clicable en su totalidad y lleva al detalle. Por accesibilidad, cada fila contiene un único enlace real (la fecha) que se extiende con CSS sobre toda la fila, de modo que también funciona con teclado y lectores de pantalla.
+
+**Diseño.** Herramienta de gestión sobria: neutros fríos, un único color de acento, tablas para los datos y sin elementos decorativos. Las reglas están en `CLAUDE.md` y todos los colores, espacios y radios son variables en `src/styles/_variables.scss`. Se adapta a pantallas estrechas.
+
 ## Tests y calidad de código
 
 **Backend** (desde `backend/`, con el entorno virtual activo):
@@ -515,7 +546,8 @@ Esta sección se actualiza con cada fase del desarrollo.
 - **Autenticación de la API:** login, logout y `me` con sesión y CSRF, permisos y tests.
 - **API de visitas:** endpoints, filtros, paginación, validaciones, permisos de autoría, formato de errores y tests.
 - **Documentación:** el README y `CLAUDE.md`.
-- Las fases del frontend se añadirán aquí cuando se completen.
+- **Frontend, fundamentos:** capa de API con tipos, traducción de errores a español, sesión y guardia de rutas, pantalla de login, layout, página de inicio, componentes compartidos, estilos y tests.
+- Las demás pantallas del frontend se añadirán aquí cuando se completen.
 
 **Qué tuve que corregir de lo que generó:**
 
@@ -530,10 +562,12 @@ Esta sección se actualiza con cada fase del desarrollo.
 - Un import circular al registrar el permiso por defecto de la API; se resolvió moviendo imports que solo servían para tipado.
 - Para la documentación se afirmaron comportamientos (restaurar una visita desde el admin y que el seed corre en una transacción) que no tenían test; se escribieron esos tests para respaldarlos.
 - Un test del seed comprobaba de forma demasiado débil que no se creaba nada nuevo; se reforzó.
+- Un test del login comprobaba el orden de las peticiones con `indexOf`, que devuelve `-1` si la petición no existe; al romper el código a propósito no detectaba el fallo, así que se añadió la comprobación de que la petición existe.
+- En la primera revisión visual en móvil, la cabecera se apretaba (el nombre de la aplicación y «Cerrar sesión» se partían en varias líneas); se reorganizó con un punto de quiebre.
 
 **Cómo lo controlé:**
 
 - **Todos los commits y push los hago yo.** La IA tiene prohibido hacerlos y me deja el código listo, con un mensaje de commit sugerido.
 - **Reviso cada cambio** antes de confirmarlo.
 - **Pruebo manualmente todos los casos en mi ambiente local**, fase por fase: el admin con los datos de demostración, las validaciones, la eliminación lógica y los endpoints de la API.
-- **Verificación automática:** tests y linters en cada fase, ejecutados tanto con SQLite como dentro de Docker contra PostgreSQL. Para la API de visitas, además, un recorrido completo por HTTP real contra los contenedores y una comprobación de que los tests detectan fallos introducidos a propósito (borrado real en lugar de lógico y permisos de autoría desactivados).
+- **Verificación automática:** tests y linters en cada fase, ejecutados tanto con SQLite como dentro de Docker contra PostgreSQL. Para la API de visitas, además, un recorrido completo por HTTP real contra los contenedores y una comprobación de que los tests detectan fallos introducidos a propósito (borrado real en lugar de lógico y permisos de autoría desactivados). En el frontend se hizo la misma comprobación con la expiración de sesión y la petición CSRF previa al login, y se revisaron capturas de pantalla de la aplicación en ejecución (escritorio y móvil) antes de darla por buena.
