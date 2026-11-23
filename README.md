@@ -19,10 +19,10 @@ El proyecto avanza por fases.
 - [x] Fase 4: API de visitas
 - [x] Fase 5: fundamentos del frontend (login, rutas protegidas e inicio)
 - [x] Fase 6: pantallas de visitas
-- [ ] Fase 7: funcionalidades adicionales
+- [x] Fase 7: funcionalidades adicionales
   - [x] Filtro por rango de fechas y búsqueda
   - [x] Roles: administrador y especialista
-  - [ ] Documentación OpenAPI interactiva
+  - [x] Documentación OpenAPI interactiva
 - [ ] Fase 8: cierre y revisión final
 
 Las secciones de este documento que describen funcionalidad futura lo indican expresamente.
@@ -316,6 +316,8 @@ flowchart LR
 
 ## API
 
+> La API tiene documentación interactiva (Swagger) en `/api/docs/`, donde se puede probar cada endpoint: ver [Documentación interactiva de la API](#documentación-interactiva-de-la-api-swagger).
+
 Todos los endpoints exigen una sesión salvo los marcados como públicos. Hay dos roles, **especialista** y **administrador** (ver [Roles](#roles-administrador-y-especialista)); un usuario que no es ninguno de los dos no puede iniciar sesión en la API.
 
 | Método | Ruta                | Acceso   | Descripción                                          |
@@ -544,6 +546,36 @@ En la interfaz, el administrador ve una etiqueta «Administrador» junto a su no
 
 Para convertir a alguien en administrador desde el admin de Django, marca **«Staff status»** en su usuario.
 
+### Documentación interactiva de la API (Swagger)
+
+La API se documenta sola con **OpenAPI** (con `drf-spectacular`) y se puede explorar y probar desde el navegador:
+
+| Qué                          | Docker                                  | Ejecución local                          |
+| ---------------------------- | --------------------------------------- | ---------------------------------------- |
+| Swagger UI (probar endpoints) | http://localhost:3000/api/docs/        | http://localhost:8000/api/docs/          |
+| Esquema OpenAPI (YAML)        | http://localhost:3000/api/schema/      | http://localhost:8000/api/schema/        |
+| Esquema OpenAPI (JSON)        | `.../api/schema/?format=json`          | `.../api/schema/?format=json`            |
+
+Es **pública**: cualquiera puede ver la documentación; para probar los endpoints protegidos hay que iniciar sesión, como en la aplicación. Los archivos de Swagger UI van incluidos en el proyecto, así que funciona sin conexión a internet, también dentro de Docker.
+
+**Cómo probarla.**
+
+1. Abre `/api/docs/`. Los endpoints están agrupados en **Auth**, **Visits**, **Directory**, **Specialists** y **Health**, y «Try it out» ya viene activado.
+2. En **Auth → `POST /api/auth/login/`** pulsa **Execute**. El cuerpo ya viene relleno con un ejemplo (hay otro para el administrador: `admin` / `admin12345`).
+3. A partir de ahí, el resto de endpoints funcionan desde la propia página: el navegador envía la cookie de sesión y la página añade sola el token CSRF a las peticiones que modifican datos (lo lee de la cookie en cada petición, porque Django lo renueva al iniciar sesión).
+4. Cierra la sesión con `POST /api/auth/logout/`.
+
+La sesión es la misma que la de la aplicación: si ya has iniciado sesión allí, ya estás dentro aquí. No hay botón «Authorize» porque la autenticación es una cookie y una página no puede crearla; se inicia sesión con el endpoint de login.
+
+**Qué documenta.** Cada endpoint tiene resumen, descripción, parámetros (incluidos los filtros, la búsqueda y la paginación del listado de visitas), el formato de la petición y de la respuesta, y todas las respuestas de error posibles (`400`, `401`, `403`, `404`) con su formato `{detail, code}` o `{detail, errors}`. La introducción de la página resume los roles y el formato de errores.
+
+**Mantenerla al día.** Un test genera el esquema con `--validate --fail-on-warn`, de modo que cualquier endpoint nuevo sin documentar o mal anotado hace fallar los tests, y otro comprueba que la lista de endpoints documentados coincide con la de la API. Para guardar el esquema en un archivo:
+
+```bash
+python manage.py spectacular --file schema.yml                 # local (desde backend/)
+docker compose exec backend python manage.py spectacular       # Docker (lo imprime)
+```
+
 ## Tests y calidad de código
 
 **Backend** (desde `backend/`, con el entorno virtual activo):
@@ -582,7 +614,6 @@ npm run build             # build de producción
 
 Se completará al cierre del proyecto. Candidatas, ordenadas por valor:
 
-- Documentación OpenAPI interactiva.
 - Integración continua (tests y linters en cada push).
 - Límite de intentos de inicio de sesión.
 - Cookies `Secure` y cabeceras HTTPS para un despliegue con TLS (hoy se sirve por HTTP en `localhost`).
@@ -615,6 +646,7 @@ Esta sección se actualiza con cada fase del desarrollo.
 - **Documentación:** el README y `CLAUDE.md`.
 - **Frontend, fundamentos:** capa de API con tipos, traducción de errores a español, sesión y guardia de rutas, pantalla de login, layout, página de inicio, componentes compartidos, estilos y tests.
 - **Frontend, pantallas de visitas:** listado con filtros y paginación, formulario de alta y edición, detalle, eliminación con confirmación, hooks de datos, componentes de formulario y tests.
+- **Documentación OpenAPI:** configuración de `drf-spectacular`, anotaciones de los endpoints, el hook que añade los errores a cada operación, la plantilla de Swagger UI y sus tests.
 - **Roles:** concepto de rol y permisos del backend, inicio de sesión del administrador, endpoint de especialistas, autoría de las visitas, el desplegable «Especialista» y los permisos en la interfaz, con tests.
 - **Búsqueda y filtro por fechas:** filtros del backend con validación, campos nuevos en el listado, pausa al escribir, filtros en la URL, mensajes en español y tests en ambos lados.
 
@@ -634,6 +666,9 @@ Esta sección se actualiza con cada fase del desarrollo.
 - Un test del login comprobaba el orden de las peticiones con `indexOf`, que devuelve `-1` si la petición no existe; al romper el código a propósito no detectaba el fallo, así que se añadió la comprobación de que la petición existe.
 - Se nombraron `visitForm.ts` y `VisitForm.tsx` (y lo mismo con los filtros) en la misma carpeta; en Windows y macOS, donde las mayúsculas no distinguen, chocaban y TypeScript lo detectó. Se renombraron los módulos de lógica.
 - Un test del formulario comprobaba que el docente se vaciaba al cambiar de colegio mirando el texto del select, que no cambia aunque el valor interno siga siendo el del colegio anterior; al romper el código a propósito no lo detectaba, y la visita se habría podido enviar con un docente de otro colegio. Se reescribió para comprobar que no se puede enviar sin elegir un docente nuevo.
+- La plantilla estándar de Swagger incrusta el token CSRF al cargar la página, pero Django lo renueva al iniciar sesión, así que un `POST` probado justo después del login habría fallado con 403; se escribió una plantilla de JavaScript propia que lo lee de la cookie en cada petición, y se comprobó en un navegador real.
+- Swagger mostraba un botón «Authorize» que no podía funcionar con una cookie de sesión; se ocultó.
+- Un decorador que fijaba la cookie CSRF en la página de documentación resultó redundante (la plantilla ya lo hacía de forma implícita) y ningún test lo distinguía; se eliminó el respaldo implícito para que la cookie dependa solo de ese decorador y un test lo proteja.
 - Un test del desplegable de especialistas miraba el valor del campo antes de que llegaran los datos («Cargando especialistas…»); el mismo fallo de temporización ocurrió antes con el de colegios. Se espera a las opciones antes de comprobar.
 - El subtítulo del formulario de alta decía «la visita que realizaste», que no tiene sentido cuando el administrador registra a nombre de otro especialista; se dejó neutro.
 - Dos tests de la búsqueda fallaron por un error mío en el propio test (el prefijo `GET` duplicado en una constante), no por la aplicación; se corrigieron.

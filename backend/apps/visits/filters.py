@@ -19,9 +19,23 @@ class VisitFilterForm(forms.Form):
 
 
 class VisitFilter(django_filters.FilterSet):
-    date_from = django_filters.DateFilter(field_name="visit_date", lookup_expr="gte")
-    date_to = django_filters.DateFilter(field_name="visit_date", lookup_expr="lte")
-    search = django_filters.CharFilter(method="filter_search")
+    date_from = django_filters.DateFilter(
+        field_name="visit_date",
+        lookup_expr="gte",
+        help_text="Visits on or after this date (YYYY-MM-DD).",
+    )
+    date_to = django_filters.DateFilter(
+        field_name="visit_date",
+        lookup_expr="lte",
+        help_text="Visits on or before this date (YYYY-MM-DD). Must not be before `date_from`.",
+    )
+    search = django_filters.CharFilter(
+        method="filter_search",
+        help_text=(
+            "Text looked up in the observations, the teacher name and the school name, "
+            "ignoring case. With several words, every word must appear in one of them."
+        ),
+    )
 
     class Meta:
         model = Visit

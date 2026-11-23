@@ -2,6 +2,8 @@ from pathlib import Path
 
 import environ
 
+from config.api_description import API_DESCRIPTION
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env()
@@ -27,6 +29,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "django_filters",
+    "drf_spectacular",
+    "drf_spectacular_sidecar",
     "apps.core",
     "apps.accounts",
     "apps.directory",
@@ -106,4 +110,36 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "apps.core.pagination.StandardPagination",
     "EXCEPTION_HANDLER": "apps.core.exceptions.api_exception_handler",
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "School visits API",
+    "DESCRIPTION": API_DESCRIPTION,
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SCHEMA_PATH_PREFIX": r"/api",
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SWAGGER_UI_DIST": "SIDECAR",
+    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+    "SWAGGER_UI_SETTINGS": {
+        "deepLinking": True,
+        "displayRequestDuration": True,
+        "tryItOutEnabled": True,
+        "tagsSorter": "alpha",
+    },
+    "TAGS": [
+        {"name": "Auth", "description": "Session handling for specialists and administrators."},
+        {"name": "Visits", "description": "Register, consult, edit and delete school visits."},
+        {"name": "Directory", "description": "Schools and teachers used to fill in a visit."},
+        {
+            "name": "Specialists",
+            "description": "Specialists an administrator can assign visits to.",
+        },
+        {"name": "Health", "description": "Service status."},
+    ],
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+        "apps.core.schema.add_error_responses",
+    ],
 }

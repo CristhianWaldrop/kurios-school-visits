@@ -88,6 +88,10 @@ teachers), `visits` (visits).
   - One behaviour per test with a descriptive name.
   - Cover the unhappy paths (unauthenticated, forbidden, invalid input, soft-deleted record).
 - Management commands live in `apps/<name>/management/commands/`, stay idempotent and print what they did.
+- **API documentation** (`drf-spectacular`, served at `/api/docs/`): every endpoint needs `@extend_schema` with a
+  tag and a summary, and APIViews need an explicit request/response. Error responses are added by the hook in
+  `apps/core/schema.py`. `python manage.py spectacular --validate --fail-on-warn` must stay clean; a test enforces it
+  and checks the documented operations match the API.
 
 ## Frontend conventions (React + Vite + TypeScript)
 
