@@ -8,7 +8,9 @@ import { ButtonLink } from '../../components/ButtonLink'
 import { SelectField } from '../../components/SelectField'
 import { TextAreaField } from '../../components/TextAreaField'
 import { TextField } from '../../components/TextField'
+import { useAuth } from '../auth/useAuth'
 import { useSchools } from '../directory/useSchools'
+import { useSpecialists } from '../directory/useSpecialists'
 import { useTeachers } from '../directory/useTeachers'
 import {
   todayIso,
@@ -32,10 +34,14 @@ export function VisitForm({ initialValues, submitLabel, cancelTo, onSubmit }: Vi
   const [errors, setErrors] = useState<VisitFormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
+
   const schools = useSchools()
+  const specialists = useSpecialists(isAdmin)
   const schoolId = values.schoolId ? Number(values.schoolId) : undefined
   const teachers = useTeachers(schoolId)
-  const loadError = schools.error ?? teachers.error
+  const loadError = schools.error ?? teachers.error ?? specialists.error
 
   function setField<K extends keyof VisitFormValues>(field: K, value: VisitFormValues[K]) {
     setValues((current) => ({ ...current, [field]: value }))
@@ -50,18 +56,19 @@ export function VisitForm({ initialValues, submitLabel, cancelTo, onSubmit }: Vi
   function retryLoading() {
     if (schools.isError) void schools.refetch()
     if (teachers.isError) void teachers.refetch()
+    if (specialists.isError) void specialists.refetch()
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    const validationErrors = validateVisitForm(values, todayIso())
+    const validationErrors = validateVisitForm(values, todayIso(), { requireSpecialist: isAdmin })
     setErrors(validationErrors)
     if (Object.keys(validationErrors).length > 0) return
 
     setIsSubmitting(true)
     try {
-      await onSubmit(toVisitInput(values))
+      await onSubmit(toVisitInput(values, { includeSpecialist: isAdmin }))
     } catch (error) {
       const fieldErrors = getFieldErrors(error)
       setErrors(Object.keys(fieldErrors).length > 0 ? fieldErrors : { form: describeError(error) })
@@ -87,6 +94,24 @@ export function VisitForm({ initialValues, submitLabel, cancelTo, onSubmit }: Vi
             Reintentar
           </Button>
         </div>
+      )}
+
+      {isAdmin && (
+        <SelectField
+          label="Especialista"
+          value={values.specialistId}
+          onChange={(event) => setField('specialistId', event.target.value)}
+          error={errors.specialistId}
+        >
+          <option value="">
+            {specialists.isPending ? 'Cargando especialistas…' : 'Selecciona un especialista'}
+          </option>
+          {specialists.data?.map((specialist) => (
+            <option key={specialist.id} value={specialist.id}>
+              {specialist.fullName}
+            </option>
+          ))}
+        </SelectField>
       )}
 
       <SelectField

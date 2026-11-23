@@ -5,6 +5,7 @@ export type FieldErrors = Record<string, string>
 const FIELD_NAMES: Record<string, string> = {
   school_id: 'schoolId',
   teacher_id: 'teacherId',
+  specialist_id: 'specialistId',
   visit_date: 'visitDate',
   visit_type: 'visitType',
   non_field_errors: 'form',

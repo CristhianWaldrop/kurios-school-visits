@@ -96,7 +96,7 @@ REST_FRAMEWORK = {
         "apps.accounts.authentication.SessionAuthenticationWith401",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
-        "apps.accounts.permissions.IsSpecialist",
+        "apps.accounts.permissions.HasRole",
     ],
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",

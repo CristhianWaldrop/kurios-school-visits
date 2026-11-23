@@ -97,6 +97,16 @@ describe('visits api', () => {
     })
   })
 
+  it('sends the specialist only when one is given', async () => {
+    const { calls } = mockApi({ 'POST /api/visits/': { status: 201, body: visitWire() } })
+
+    await createVisit(input)
+    await createVisit({ ...input, specialistId: 4 })
+
+    expect(calls[0]?.body).not.toHaveProperty('specialist_id')
+    expect(calls[1]?.body).toMatchObject({ specialist_id: 4 })
+  })
+
   it('updates a visit with PATCH', async () => {
     const { calls } = mockApi({ 'PATCH /api/visits/7/': { body: visitWire({ id: 7 }) } })
 

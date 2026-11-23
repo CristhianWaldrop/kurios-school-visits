@@ -1,13 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, type ReactNode } from 'react'
 
-import {
-  fetchCsrfCookie,
-  fetchCurrentSpecialist,
-  login,
-  logout,
-  type Credentials,
-} from '../../api/auth'
+import { fetchCsrfCookie, fetchCurrentUser, login, logout, type Credentials } from '../../api/auth'
 import { AuthContext, type AuthContextValue, type AuthStatus } from './AuthContext'
 import { authKeys } from './authKeys'
 
@@ -26,7 +20,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const meQuery = useQuery({
     queryKey: authKeys.me,
-    queryFn: ({ signal }) => fetchCurrentSpecialist(signal),
+    queryFn: ({ signal }) => fetchCurrentUser(signal),
     retry: false,
     staleTime: Infinity,
   })
@@ -36,7 +30,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await fetchCsrfCookie()
       return login(credentials)
     },
-    onSuccess: (specialist) => queryClient.setQueryData(authKeys.me, specialist),
+    onSuccess: (currentUser) => queryClient.setQueryData(authKeys.me, currentUser),
   })
 
   const logoutMutation = useMutation({

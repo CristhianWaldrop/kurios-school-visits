@@ -18,10 +18,7 @@ export function NewVisitPage() {
 
   return (
     <>
-      <PageHeader
-        title="Registrar visita"
-        description="Completa los datos de la visita que realizaste."
-      />
+      <PageHeader title="Registrar visita" description="Completa los datos de la visita." />
       <VisitForm
         initialValues={emptyVisitFormValues}
         submitLabel="Registrar visita"

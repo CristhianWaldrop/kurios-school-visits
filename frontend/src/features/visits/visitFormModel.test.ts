@@ -11,6 +11,7 @@ import {
 const validValues: VisitFormValues = {
   schoolId: '1',
   teacherId: '2',
+  specialistId: '',
   visitDate: '2026-11-20',
   visitType: 'meeting',
   observations: 'Planificación del lapso.',
@@ -28,7 +29,7 @@ describe('validateVisitForm', () => {
     expect(validateVisitForm(validValues, '2026-11-22')).toEqual({})
   })
 
-  it('asks for every field when the form is empty', () => {
+  it('asks for every field a specialist must fill when the form is empty', () => {
     expect(validateVisitForm(emptyVisitFormValues, '2026-11-22')).toEqual({
       schoolId: 'Selecciona un colegio.',
       teacherId: 'Selecciona un docente.',
@@ -36,6 +37,22 @@ describe('validateVisitForm', () => {
       visitType: 'Selecciona el tipo de visita.',
       observations: 'Escribe las observaciones de la visita.',
     })
+  })
+
+  it('does not ask a specialist to choose a specialist', () => {
+    expect(validateVisitForm(validValues, '2026-11-22').specialistId).toBeUndefined()
+  })
+
+  it('asks an administrator to choose a specialist', () => {
+    const errors = validateVisitForm(validValues, '2026-11-22', { requireSpecialist: true })
+
+    expect(errors).toEqual({ specialistId: 'Selecciona un especialista.' })
+  })
+
+  it('accepts an administrator form once the specialist is chosen', () => {
+    const values = { ...validValues, specialistId: '3' }
+
+    expect(validateVisitForm(values, '2026-11-22', { requireSpecialist: true })).toEqual({})
   })
 
   it('rejects dates in the future', () => {
@@ -65,6 +82,16 @@ describe('toVisitInput', () => {
       observations: 'Texto',
     })
   })
+
+  it('does not send a specialist unless asked to', () => {
+    expect(toVisitInput({ ...validValues, specialistId: '3' })).not.toHaveProperty('specialistId')
+  })
+
+  it('sends the chosen specialist as a number for administrators', () => {
+    const input = toVisitInput({ ...validValues, specialistId: '3' }, { includeSpecialist: true })
+
+    expect(input.specialistId).toBe(3)
+  })
 })
 
 describe('visitToFormValues', () => {
@@ -73,7 +100,7 @@ describe('visitToFormValues', () => {
       id: 9,
       school: { id: 1, name: 'Colegio San Rafael', city: 'Maracaibo' },
       teacher: { id: 2, schoolId: 1, firstName: 'Ana', lastName: 'Rojas', fullName: 'Ana Rojas' },
-      specialist: { id: 1, fullName: 'María González' },
+      specialist: { id: 4, fullName: 'María González' },
       visitDate: '2026-11-20',
       visitType: 'classroom_visit',
       observations: 'Notas',
@@ -84,6 +111,7 @@ describe('visitToFormValues', () => {
     expect(visitToFormValues(visit)).toEqual({
       schoolId: '1',
       teacherId: '2',
+      specialistId: '4',
       visitDate: '2026-11-20',
       visitType: 'classroom_visit',
       observations: 'Notas',

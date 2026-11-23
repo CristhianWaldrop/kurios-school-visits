@@ -48,12 +48,14 @@ class TestLogin:
 
         assert response.status_code == 200
         assert response.json() == {
-            "id": specialist.pk,
+            "id": specialist.user_id,
             "username": specialist.user.username,
             "first_name": specialist.user.first_name,
             "last_name": specialist.user.last_name,
             "full_name": specialist.full_name,
             "email": specialist.user.email,
+            "role": "specialist",
+            "specialist_id": specialist.pk,
             "specialty": specialist.specialty,
         }
         assert csrf_client.get(reverse("auth-me")).status_code == 200
@@ -140,7 +142,9 @@ class TestMe:
         response = specialist_client.get(reverse("auth-me"))
 
         assert response.status_code == 200
-        assert response.json()["id"] == specialist.pk
+        assert response.json()["id"] == specialist.user_id
+        assert response.json()["specialist_id"] == specialist.pk
+        assert response.json()["role"] == "specialist"
         assert response.json()["username"] == specialist.user.username
 
     def test_is_forbidden_for_users_without_specialist_profile(self, api_client):
@@ -150,7 +154,7 @@ class TestMe:
 
         assert response.status_code == 403
         assert response.json() == {
-            "detail": "The authenticated user is not a specialist.",
+            "detail": "The authenticated user is neither a specialist nor an administrator.",
             "code": "permission_denied",
         }
 

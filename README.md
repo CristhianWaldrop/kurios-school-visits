@@ -21,7 +21,7 @@ El proyecto avanza por fases.
 - [x] Fase 6: pantallas de visitas
 - [ ] Fase 7: funcionalidades adicionales
   - [x] Filtro por rango de fechas y búsqueda
-  - [ ] Roles: administrador y especialista
+  - [x] Roles: administrador y especialista
   - [ ] Documentación OpenAPI interactiva
 - [ ] Fase 8: cierre y revisión final
 
@@ -210,7 +210,7 @@ Todos los datos son ficticios. Las fechas de las visitas se calculan respecto al
 | Especialista  | `maria.gonzalez` | `demo1234`   | Matemáticas    |
 | Especialista  | `carlos.pena`    | `demo1234`   | Lectoescritura |
 | Especialista  | `lucia.mendoza`  | `demo1234`   | Ciencias       |
-| Administrador | `admin`          | `admin12345` | -              |
+| Administrador | `admin`          | `admin12345` | - (entra en la aplicación y en `/admin/`) |
 
 **Cómo se comporta al repetirse:**
 
@@ -316,7 +316,7 @@ flowchart LR
 
 ## API
 
-Todos los endpoints exigen una sesión de **especialista** salvo los marcados como públicos. Un usuario sin perfil de especialista (por ejemplo `admin`) no puede iniciar sesión en la API.
+Todos los endpoints exigen una sesión salvo los marcados como públicos. Hay dos roles, **especialista** y **administrador** (ver [Roles](#roles-administrador-y-especialista)); un usuario que no es ninguno de los dos no puede iniciar sesión en la API.
 
 | Método | Ruta                | Acceso   | Descripción                                          |
 | ------ | ------------------- | -------- | ---------------------------------------------------- |
@@ -324,6 +324,7 @@ Todos los endpoints exigen una sesión de **especialista** salvo los marcados co
 | GET    | `/api/auth/csrf/`   | Público  | Fija la cookie `csrftoken` (204)                     |
 | POST   | `/api/auth/login/`  | Público  | Inicia sesión con `username` y `password`            |
 | POST   | `/api/auth/logout/` | Sesión   | Cierra la sesión (204)                               |
+| GET    | `/api/specialists/` | Administrador | Especialistas (`id` y `full_name`, sin paginar), para el desplegable del formulario |
 | GET    | `/api/schools/`     | Sesión   | Colegios (sin paginar, ordenados por nombre)         |
 | GET    | `/api/teachers/`    | Sesión   | Docentes (sin paginar); filtro `?school=<id>`        |
 | GET    | `/api/visits/`      | Sesión   | Visitas, paginadas; filtros por colegio, tipo, fechas y texto (ver [Visitas](#visitas)) |
@@ -348,23 +349,27 @@ Respuesta de `login` y `me`:
 
 ```json
 {
-  "id": 1,
+  "id": 2,
   "username": "maria.gonzalez",
   "first_name": "María",
   "last_name": "González",
   "full_name": "María González",
   "email": "maria.gonzalez@example.com",
+  "role": "specialist",
+  "specialist_id": 1,
   "specialty": "Matemáticas"
 }
 ```
+
+`id` es el del usuario. `role` es `specialist` o `admin`. `specialist_id` es el del perfil de especialista y vale `null` para un administrador que no tiene perfil (en ese caso `specialty` va vacío).
 
 Códigos de estado:
 
 | Código | Cuándo                                                                               |
 | ------ | ------------------------------------------------------------------------------------ |
 | 400    | Faltan `username` o `password` (ver [formato de errores](#formato-de-errores))        |
-| 401    | Sin sesión, o credenciales inválidas (mismo mensaje para usuario inexistente, contraseña errónea, usuario inactivo o sin perfil de especialista) |
-| 403    | Sesión válida de un usuario que no es especialista, o token CSRF ausente o inválido (`{"code": "csrf_failed"}`) |
+| 401    | Sin sesión, o credenciales inválidas (mismo mensaje para usuario inexistente, contraseña errónea, usuario inactivo o sin ningún rol) |
+| 403    | Sesión válida de un usuario sin rol, acción reservada a administradores, o token CSRF ausente o inválido (`{"code": "csrf_failed"}`) |
 
 Ejemplo con `curl` (usa `curl.exe` en PowerShell):
 
@@ -378,7 +383,7 @@ curl -b cookies.txt http://localhost:3000/api/auth/me/
 
 ### Visitas
 
-**Permisos.** Cualquier especialista autenticado puede ver todas las visitas. Solo quien registró una visita puede editarla o eliminarla (`403` para los demás). El especialista autor se toma de la sesión y no se puede elegir ni cambiar desde el cliente.
+**Permisos.** Cualquier usuario con sesión puede ver todas las visitas. Un **especialista** solo puede editar o eliminar las que registró (`403` en las demás), y la visita que registra queda siempre a su nombre. Un **administrador** puede registrar, editar y eliminar cualquier visita, y elige a qué especialista pertenece.
 
 **Listado** (`GET /api/visits/`): ordenado de la visita más reciente a la más antigua y sin las eliminadas. Está paginado con `page` y `page_size` (10 por defecto, máximo 50):
 
@@ -421,11 +426,14 @@ Un valor inválido responde `400` con el código del error: `invalid_choice` (co
 {
   "school_id": 1,
   "teacher_id": 1,
+  "specialist_id": 2,
   "visit_date": "2026-11-20",
   "visit_type": "classroom_visit",
   "observations": "Texto de la observación"
 }
 ```
+
+`specialist_id` solo lo usan los administradores: es obligatorio al registrar y opcional al editar (si no se envía, la visita conserva su especialista). Un especialista puede enviarlo, pero se ignora.
 
 Tipos de visita (`visit_type`): `classroom_visit` (visita en aula) y `meeting` (encuentro).
 
@@ -438,7 +446,8 @@ Tipos de visita (`visit_type`): `classroom_visit` (visita en aula) y `meeting` (
 | `visit_date`          | Fecha válida (`AAAA-MM-DD`)                        | `invalid`               |
 | `visit_date`          | No puede ser futura (hoy sí es válido)             | `future_date`           |
 | `visit_type`          | Debe ser uno de los tipos válidos                  | `invalid_choice`        |
-| `school_id`, `teacher_id` | Deben existir                                  | `does_not_exist`        |
+| `school_id`, `teacher_id`, `specialist_id` | Deben existir                 | `does_not_exist`        |
+| `specialist_id`       | Obligatorio al registrar si quien envía es administrador | `required`  |
 | `teacher_id`          | El docente debe pertenecer al colegio elegido (también al editar solo uno de los dos) | `teacher_not_in_school` |
 
 **Eliminación** (`DELETE`). Es lógica: responde `204`, se rellena `deleted_at` y la visita deja de aparecer en el listado y en el detalle (`404`), pero la fila se conserva en la base de datos.
@@ -481,7 +490,7 @@ Toda la interfaz está en español. Se llama siempre a rutas relativas (`/api/..
 
 - **Listado.** Tabla paginada (10 por página) con búsqueda de texto y filtros por colegio, tipo de visita y rango de fechas (ver [Funcionalidades adicionales](#funcionalidades-adicionales)). Los filtros y la página viven en la dirección (`/visits?school=1&type=meeting&from=2026-11-01&q=ana&page=2`), así que se pueden compartir, funcionan con el botón «Atrás» y sobreviven a recargar la página. Cambiar un filtro vuelve a la primera página. Distingue entre no tener visitas y no tener visitas que coincidan con los filtros, y cada fila entera es clicable.
 - **Registro y edición.** Un único formulario para ambos casos. El docente depende del colegio elegido (solo se ofrecen los de ese colegio y se vacía al cambiar de colegio), y la fecha no admite días futuros. Valida primero en el navegador, con mensajes en español, y después muestra bajo cada campo los errores que devuelva el servidor. Si el envío falla se conserva lo escrito.
-- **Detalle.** Muestra todos los datos, con las observaciones respetando los saltos de línea. Solo el especialista que registró la visita ve los botones «Editar» y «Eliminar»; el resto ve un aviso. Quien intente abrir la edición de una visita ajena por la dirección ve un mensaje y no el formulario, y el servidor lo rechaza igualmente.
+- **Detalle.** Muestra todos los datos, con las observaciones respetando los saltos de línea. Ven los botones «Editar» y «Eliminar» el especialista que registró la visita y cualquier administrador; el resto ve un aviso. Quien intente abrir la edición de una visita ajena por la dirección ve un mensaje y no el formulario, y el servidor lo rechaza igualmente.
 - **Eliminación.** Pide confirmación en la misma página y es lógica: la visita deja de mostrarse en la aplicación, pero la fila se conserva (ver [Modelo de datos](#modelo-de-datos)). Si falla, la visita se mantiene y se explica el error.
 - **Avisos.** Tras registrar, guardar cambios o eliminar se muestra una confirmación en la pantalla de destino. Se puede cerrar con la «×» y, si no se cierra, desaparece sola a los 20 segundos. Una vez cerrado, no vuelve a aparecer al recargar la página.
 
@@ -513,6 +522,27 @@ En el listado de visitas, junto a los filtros por colegio y tipo:
 - **Todo combinable y en la dirección.** La búsqueda y las fechas se suman a los demás filtros y se guardan en la URL (`/visits?q=ana&from=2026-11-01&to=2026-11-30`), de modo que se pueden compartir y sobreviven a recargar. «Limpiar filtros» los quita todos a la vez.
 
 **Limitación conocida.** La búsqueda no distingue mayúsculas, pero **sí distingue tildes**: «planificación» no encuentra «planificacion» y viceversa. Resolverlo bien requiere activar la extensión `unaccent` de PostgreSQL, que no se justifica para este alcance. Además, la base SQLite de la ejecución local solo ignora mayúsculas en letras sin tilde (con PostgreSQL, que es el que usa Docker, también las ignora en letras con tilde).
+
+### Roles: administrador y especialista
+
+La aplicación distingue dos roles. El rol no se guarda aparte: se deduce de la cuenta de Django, de modo que el mismo usuario sirve para la aplicación y para `/admin/`.
+
+- **Administrador:** cualquier usuario con el indicador `is_staff` (como el `admin` de los datos iniciales). No necesita perfil de especialista.
+- **Especialista:** cualquier otro usuario que tenga un perfil de especialista.
+- Un usuario que no es ninguno de los dos no puede iniciar sesión en la aplicación. Si un usuario es administrador y además tiene perfil de especialista, cuenta como administrador.
+
+|                                        | Especialista                | Administrador                            |
+| -------------------------------------- | --------------------------- | ---------------------------------------- |
+| Iniciar sesión en la aplicación        | Sí                          | Sí (el mismo formulario)                 |
+| Ver todas las visitas y buscar/filtrar | Sí                          | Sí                                       |
+| Registrar una visita                   | Sí, siempre a su nombre     | Sí, **eligiendo el especialista** en un desplegable |
+| Editar o eliminar una visita           | Solo las suyas              | **Cualquiera**                           |
+| Cambiar el especialista de una visita  | No                          | Sí, desde el formulario de edición       |
+| Listar especialistas (`/api/specialists/`) | No (`403`)              | Sí                                       |
+
+En la interfaz, el administrador ve una etiqueta «Administrador» junto a su nombre y un campo **«Especialista»** (obligatorio) al principio del formulario de alta y edición. Los especialistas no ven ese campo. La regla se aplica también en el servidor: aunque un especialista enviara `specialist_id`, se ignora.
+
+Para convertir a alguien en administrador desde el admin de Django, marca **«Staff status»** en su usuario.
 
 ## Tests y calidad de código
 
@@ -554,7 +584,6 @@ Se completará al cierre del proyecto. Candidatas, ordenadas por valor:
 
 - Documentación OpenAPI interactiva.
 - Integración continua (tests y linters en cada push).
-- Permisos finos por especialista.
 - Límite de intentos de inicio de sesión.
 - Cookies `Secure` y cabeceras HTTPS para un despliegue con TLS (hoy se sirve por HTTP en `localhost`).
 - Pruebas end to end.
@@ -586,6 +615,7 @@ Esta sección se actualiza con cada fase del desarrollo.
 - **Documentación:** el README y `CLAUDE.md`.
 - **Frontend, fundamentos:** capa de API con tipos, traducción de errores a español, sesión y guardia de rutas, pantalla de login, layout, página de inicio, componentes compartidos, estilos y tests.
 - **Frontend, pantallas de visitas:** listado con filtros y paginación, formulario de alta y edición, detalle, eliminación con confirmación, hooks de datos, componentes de formulario y tests.
+- **Roles:** concepto de rol y permisos del backend, inicio de sesión del administrador, endpoint de especialistas, autoría de las visitas, el desplegable «Especialista» y los permisos en la interfaz, con tests.
 - **Búsqueda y filtro por fechas:** filtros del backend con validación, campos nuevos en el listado, pausa al escribir, filtros en la URL, mensajes en español y tests en ambos lados.
 
 **Qué tuve que corregir de lo que generó:**
@@ -604,6 +634,8 @@ Esta sección se actualiza con cada fase del desarrollo.
 - Un test del login comprobaba el orden de las peticiones con `indexOf`, que devuelve `-1` si la petición no existe; al romper el código a propósito no detectaba el fallo, así que se añadió la comprobación de que la petición existe.
 - Se nombraron `visitForm.ts` y `VisitForm.tsx` (y lo mismo con los filtros) en la misma carpeta; en Windows y macOS, donde las mayúsculas no distinguen, chocaban y TypeScript lo detectó. Se renombraron los módulos de lógica.
 - Un test del formulario comprobaba que el docente se vaciaba al cambiar de colegio mirando el texto del select, que no cambia aunque el valor interno siga siendo el del colegio anterior; al romper el código a propósito no lo detectaba, y la visita se habría podido enviar con un docente de otro colegio. Se reescribió para comprobar que no se puede enviar sin elegir un docente nuevo.
+- Un test del desplegable de especialistas miraba el valor del campo antes de que llegaran los datos («Cargando especialistas…»); el mismo fallo de temporización ocurrió antes con el de colegios. Se espera a las opciones antes de comprobar.
+- El subtítulo del formulario de alta decía «la visita que realizaste», que no tiene sentido cuando el administrador registra a nombre de otro especialista; se dejó neutro.
 - Dos tests de la búsqueda fallaron por un error mío en el propio test (el prefijo `GET` duplicado en una constante), no por la aplicación; se corrigieron.
 - Tras confirmar un cambio, el aviso «Cambios guardados.» seguía visible junto a la pregunta de eliminar la visita; se oculta mientras se pide la confirmación.
 - Al revisar a mano la aplicación vi que los avisos de confirmación (registrar, editar y eliminar) no se cerraban nunca; ahora tienen un botón para cerrarlos y se cierran solos a los 20 segundos, y al cerrarse se limpian del historial del navegador para que no reaparezcan al recargar.

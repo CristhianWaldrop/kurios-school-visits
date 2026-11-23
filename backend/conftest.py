@@ -31,3 +31,16 @@ def specialist(db):
 def specialist_client(api_client: APIClient, specialist) -> APIClient:
     api_client.force_authenticate(user=specialist.user)
     return api_client
+
+
+@pytest.fixture
+def administrator(db):
+    from apps.accounts.tests.factories import UserFactory
+
+    return UserFactory(username="administrator", is_staff=True)
+
+
+@pytest.fixture
+def administrator_client(api_client: APIClient, administrator) -> APIClient:
+    api_client.force_authenticate(user=administrator)
+    return api_client

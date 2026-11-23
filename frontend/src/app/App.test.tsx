@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import { notAuthenticated, pageWire, specialistWire, visitWire } from '../test/fixtures'
+import { adminWire, notAuthenticated, pageWire, specialistWire, visitWire } from '../test/fixtures'
 import { mockApi } from '../test/mockApi'
 import { renderWithProviders } from '../test/renderWithProviders'
 import { App } from './App'
@@ -85,6 +85,26 @@ describe('App', () => {
         'href',
         '/visits',
       )
+    })
+
+    it('does not label a specialist as administrator', async () => {
+      mockApi(authenticatedRoutes)
+
+      renderWithProviders(<App />, { route: '/' })
+
+      const banner = await screen.findByRole('banner')
+      await within(banner).findByText('María González')
+      expect(within(banner).queryByText('Administrador')).not.toBeInTheDocument()
+    })
+
+    it('labels an administrator as such', async () => {
+      mockApi({ ...authenticatedRoutes, 'GET /api/auth/me/': { body: adminWire } })
+
+      renderWithProviders(<App />, { route: '/' })
+
+      const banner = await screen.findByRole('banner')
+      expect(within(banner).getByText('admin')).toBeInTheDocument()
+      expect(within(banner).getByText('Administrador')).toBeInTheDocument()
     })
 
     it('marks the current section in the navigation', async () => {

@@ -11,6 +11,7 @@ import { PageHeader } from '../../components/PageHeader'
 import { noticeState } from '../../lib/useNotice'
 import { useAuth } from '../auth/useAuth'
 import { visitToFormValues } from './visitFormModel'
+import { canManageVisit } from './visitPermissions'
 import { VisitForm } from './VisitForm'
 import { useUpdateVisit } from './useVisitMutations'
 import { useVisit } from './useVisit'
@@ -44,7 +45,7 @@ function EditVisit({ id }: EditVisitProps) {
     )
   }
 
-  if (user?.id !== visit.specialist.id) {
+  if (!canManageVisit(user, visit)) {
     return (
       <>
         <h1>Editar visita</h1>

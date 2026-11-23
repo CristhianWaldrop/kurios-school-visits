@@ -10,6 +10,8 @@ the visits they make to schools, and consult, edit and soft-delete them.
 - Monorepo: `backend/` (Django + Django REST Framework) and `frontend/` (React + Vite + TypeScript).
 - Database: PostgreSQL (Docker) or SQLite (local convenience fallback), selected through `DATABASE_URL`.
 - Authentication: Django session authentication. The API is protected; the Django admin uses the same users.
+- Roles: `admin` (any user with `is_staff`, no specialist profile required) and `specialist` (any other user with a
+  `Specialist` profile). Role logic lives in `apps/accounts/roles.py`; a user with neither role cannot use the API.
 - Delivery plan and status: `docs/PLAN.md` (local working file, git-ignored, never published). User-facing documentation: `README.md`.
 
 ## Hard rules

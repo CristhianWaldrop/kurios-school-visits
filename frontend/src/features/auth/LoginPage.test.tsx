@@ -2,7 +2,13 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import { App } from '../../app/App'
-import { notAuthenticated, pageWire, specialistWire, visitWire } from '../../test/fixtures'
+import {
+  adminWire,
+  notAuthenticated,
+  pageWire,
+  specialistWire,
+  visitWire,
+} from '../../test/fixtures'
 import { mockApi } from '../../test/mockApi'
 import { renderWithProviders } from '../../test/renderWithProviders'
 
@@ -109,6 +115,16 @@ describe('LoginPage', () => {
 
     finishLogin()
     await waitFor(() => expect(screen.getByRole('button', { name: 'Ingresar' })).toBeEnabled())
+  })
+
+  it('lets an administrator sign in', async () => {
+    mockApi({ ...anonymousRoutes, 'POST /api/auth/login/': { body: adminWire } })
+    renderWithProviders(<App />, { route: '/login' })
+
+    await fillAndSubmit('admin', 'admin12345')
+
+    expect(await screen.findByRole('heading', { name: 'Hola, admin' })).toBeInTheDocument()
+    expect(screen.getByText('Administrador')).toBeInTheDocument()
   })
 
   it('redirects to the home page when there is already a session', async () => {

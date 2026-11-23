@@ -1,11 +1,25 @@
 export const specialistWire = {
-  id: 1,
+  id: 11,
   username: 'maria.gonzalez',
   first_name: 'María',
   last_name: 'González',
   full_name: 'María González',
   email: 'maria.gonzalez@example.com',
+  role: 'specialist',
+  specialist_id: 1,
   specialty: 'Matemáticas',
+}
+
+export const adminWire = {
+  id: 12,
+  username: 'admin',
+  first_name: '',
+  last_name: '',
+  full_name: 'admin',
+  email: 'admin@example.com',
+  role: 'admin',
+  specialist_id: null,
+  specialty: '',
 }
 
 export const notAuthenticated = {
@@ -16,6 +30,11 @@ export const notAuthenticated = {
 export const schoolsWire = [
   { id: 1, name: 'Colegio San Rafael', city: 'Maracaibo' },
   { id: 2, name: 'Colegio Santa Lucía', city: 'Caracas' },
+]
+
+export const specialistsWire = [
+  { id: 1, full_name: 'María González' },
+  { id: 2, full_name: 'Carlos Peña' },
 ]
 
 export function teacherWire(overrides: Record<string, unknown> = {}) {

@@ -1,12 +1,16 @@
 export type VisitType = 'classroom_visit' | 'meeting'
 
-export interface Specialist {
+export type Role = 'admin' | 'specialist'
+
+export interface CurrentUser {
   id: number
   username: string
   firstName: string
   lastName: string
   fullName: string
   email: string
+  role: Role
+  specialistId: number | null
   specialty: string
 }
 
@@ -44,6 +48,7 @@ export interface Visit {
 export interface VisitInput {
   schoolId: number
   teacherId: number
+  specialistId?: number
   visitDate: string
   visitType: VisitType
   observations: string

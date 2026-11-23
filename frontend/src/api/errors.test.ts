@@ -74,6 +74,12 @@ describe('getFieldErrors', () => {
     ])
   })
 
+  it('maps the specialist field of administrators', () => {
+    const error = validationError({ specialist_id: [{ code: 'does_not_exist', message: 'x' }] })
+
+    expect(getFieldErrors(error)).toEqual({ specialistId: 'La opción seleccionada ya no existe.' })
+  })
+
   it('uses a date specific message for malformed dates', () => {
     const error = validationError({ visit_date: [{ code: 'invalid', message: 'x' }] })
 

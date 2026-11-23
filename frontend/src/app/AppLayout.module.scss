@@ -78,6 +78,14 @@
   color: $color-muted;
 }
 
+.role {
+  padding: 0 $space-2;
+  border: 1px solid $color-border-strong;
+  border-radius: $radius;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
 .main {
   width: 100%;
   max-width: $content-width;

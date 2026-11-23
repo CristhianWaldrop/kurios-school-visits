@@ -17,6 +17,7 @@ import { useAuth } from '../auth/useAuth'
 import { useDeleteVisit } from './useVisitMutations'
 import { useVisit } from './useVisit'
 import { useVisitId } from './useVisitId'
+import { canManageVisit } from './visitPermissions'
 import { visitTypeLabels } from './visitTypes'
 import styles from './VisitDetailPage.module.scss'
 
@@ -51,7 +52,7 @@ function VisitDetail({ id }: VisitDetailProps) {
     )
   }
 
-  const canModify = user?.id === visit.specialist.id
+  const canModify = canManageVisit(user, visit)
 
   async function handleDelete() {
     try {

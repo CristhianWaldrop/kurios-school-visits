@@ -1,5 +1,5 @@
 import { mockApi } from '../test/mockApi'
-import { listSchools, listTeachers } from './directory'
+import { listSchools, listSpecialists, listTeachers } from './directory'
 
 const teacherWire = {
   id: 4,
@@ -15,6 +15,12 @@ describe('directory api', () => {
     mockApi({ 'GET /api/schools/': { body: schools } })
 
     await expect(listSchools()).resolves.toEqual(schools)
+  })
+
+  it('lists the specialists with their names in camelCase', async () => {
+    mockApi({ 'GET /api/specialists/': { body: [{ id: 3, full_name: 'Lucía Mendoza' }] } })
+
+    await expect(listSpecialists()).resolves.toEqual([{ id: 3, fullName: 'Lucía Mendoza' }])
   })
 
   it('lists every teacher and maps the school id', async () => {

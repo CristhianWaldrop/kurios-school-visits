@@ -1,5 +1,5 @@
 import { apiRequest } from './httpClient'
-import type { School, Teacher } from './types'
+import type { School, SpecialistSummary, Teacher } from './types'
 
 interface TeacherWire {
   id: number
@@ -17,6 +17,16 @@ export function toTeacher(wire: TeacherWire): Teacher {
     lastName: wire.last_name,
     fullName: wire.full_name,
   }
+}
+
+interface SpecialistSummaryWire {
+  id: number
+  full_name: string
+}
+
+export async function listSpecialists(signal?: AbortSignal): Promise<SpecialistSummary[]> {
+  const wire = await apiRequest<SpecialistSummaryWire[]>('/specialists/', { signal })
+  return wire.map((specialist) => ({ id: specialist.id, fullName: specialist.full_name }))
 }
 
 export function listSchools(signal?: AbortSignal): Promise<School[]> {

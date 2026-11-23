@@ -1,15 +1,21 @@
 from django.contrib.auth import login, logout
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
-from rest_framework import status
+from rest_framework import status, viewsets
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.serializers import LoginSerializer, SpecialistSerializer
-from apps.accounts.services import authenticate_specialist
+from apps.accounts.models import Specialist
+from apps.accounts.permissions import IsAdmin
+from apps.accounts.serializers import (
+    AccountSerializer,
+    LoginSerializer,
+    SpecialistSummarySerializer,
+)
+from apps.accounts.services import authenticate_user
 
 
 @method_decorator(ensure_csrf_cookie, name="dispatch")
@@ -30,12 +36,12 @@ class LoginView(APIView):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        user = authenticate_specialist(request, **serializer.validated_data)
+        user = authenticate_user(request, **serializer.validated_data)
         if user is None:
             raise AuthenticationFailed("Invalid username or password.", code="invalid_credentials")
 
         login(request, user)
-        return Response(SpecialistSerializer(user.specialist).data)
+        return Response(AccountSerializer(user).data)
 
 
 class LogoutView(APIView):
@@ -48,4 +54,11 @@ class LogoutView(APIView):
 
 class MeView(APIView):
     def get(self, request: Request) -> Response:
-        return Response(SpecialistSerializer(request.user.specialist).data)
+        return Response(AccountSerializer(request.user).data)
+
+
+class SpecialistViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Specialist.objects.select_related("user")
+    serializer_class = SpecialistSummarySerializer
+    permission_classes = [IsAdmin]
+    pagination_class = None

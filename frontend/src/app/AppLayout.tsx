@@ -28,6 +28,7 @@ export function AppLayout() {
           </nav>
           <div className={styles.session}>
             <span>{user?.fullName}</span>
+            {user?.role === 'admin' && <span className={styles.role}>Administrador</span>}
             <Button variant="ghost" onClick={() => void logout()}>
               Cerrar sesión
             </Button>

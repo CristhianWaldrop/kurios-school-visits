@@ -68,6 +68,7 @@ function toWireInput(input: VisitInput) {
   return {
     school_id: input.schoolId,
     teacher_id: input.teacherId,
+    ...(input.specialistId !== undefined && { specialist_id: input.specialistId }),
     visit_date: input.visitDate,
     visit_type: input.visitType,
     observations: input.observations,
